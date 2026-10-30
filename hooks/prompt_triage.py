@@ -395,7 +395,7 @@ class LayaTriageEngine:
             w in prompt_lower
             for w in [
                 "monitor", "watch log", "watch serial", "tail -f", "serial console", "log stream",
-                "@coding-monitor", "@coding-monitoring", "coding-monitor", "coding-monitoring", "@monitoring"
+                "@coding-monitor", "coding-monitor"
             ]
         )
         has_investigation = investigation_enabled and any(
@@ -403,20 +403,22 @@ class LayaTriageEngine:
             for w in [
                 "investigate", "investigation", "investigating", "invetigate", "invetigation",
                 "diagnose", "root cause", "find the cause", "find cause", "troubleshoot",
-                "@coding-investigate", "coding-investigate", "@investigate", "coding-investigator", "coding-invetigator",
-                "@coding-investigator", "@coding-invetigator",
+                "@coding-investigate", "coding-investigate",
                 "track down the bug", "track down the issue", "track down the root cause"
             ]
         )
-        has_coding = coding_enabled and any(
-            w in prompt_lower
-            for w in ["write", "create", "implement", "build", "refactor", "bugfix", "fix", "feature", "code change", "@coding"]
+        has_coding = coding_enabled and (
+            any(
+                w in prompt_lower
+                for w in ["write", "create", "implement", "build", "refactor", "bugfix", "fix", "feature", "code change"]
+            )
+            or bool(re.search(r"@coding(?![a-zA-Z0-9_\-])", prompt_lower))
         )
         has_research = research_enabled and any(
             w in prompt_lower
             for w in [
                 "research", "deep research", "literature review", "web research", "find papers",
-                "topic research", "information retrieval", "@coding-research", "coding-research", "@research", "research subagent",
+                "topic research", "information retrieval", "@coding-research", "coding-research", "research subagent",
                 "state of the art", "prior art", "market research"
             ]
         )
@@ -426,7 +428,7 @@ class LayaTriageEngine:
                 "document", "documentation", "documenting", "obsidian", "vault", "adr",
                 "architecture diagram", "architecture doc", "features doc", "feature spec",
                 "sync session", "archive session", "git status doc", "status doc",
-                "@coding-document", "coding-document", "@document",
+                "@coding-document", "coding-document",
                 "record session", "store session", "store artifacts", "record the result of the monitoring"
             ]
         )
@@ -441,7 +443,7 @@ class LayaTriageEngine:
         if has_research and not has_monitoring and not has_coding and not has_investigation and not any(w in prompt_lower for w in ["explain", "describe", "also"]):
             has_inquiry = False
 
-        if has_documentation and not any(w in prompt_lower for w in ["implement", "code change", "bugfix", "refactor", "write code", "@coding"]):
+        if has_documentation and not any(w in prompt_lower for w in ["implement", "code change", "bugfix", "refactor", "write code"]) and not re.search(r"@coding(?![a-zA-Z0-9_\-])", prompt_lower):
             has_coding = False
 
         if has_documentation and not has_monitoring and not has_coding and not has_investigation and not has_research and not any(w in prompt_lower for w in ["explain", "describe", "also"]):

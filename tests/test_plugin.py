@@ -48,3 +48,25 @@ def test_rules_exist():
 def test_hook_script_exists():
     hook_file = PLUGIN_ROOT / "hooks" / "prompt_triage.py"
     assert hook_file.exists(), "hooks/prompt_triage.py must exist"
+
+
+def test_canonical_handles_in_documentation_and_rules():
+    canonical = ["@coding", "@coding-investigate", "@coding-monitor", "@coding-research", "@coding-document"]
+    legacy = ["@investigate", "@monitoring", "@document", "@research"]
+
+    for doc_name in ["README.md", "rules/AGENTS.md", "CONTRIBUTING.md"]:
+        doc_path = PLUGIN_ROOT / doc_name
+        assert doc_path.exists(), f"{doc_name} must exist"
+        text = doc_path.read_text(encoding="utf-8")
+        for handle in canonical:
+            assert handle in text, f"Canonical handle {handle} missing in {doc_name}"
+        for legacy_handle in legacy:
+            assert legacy_handle not in text, f"Legacy handle {legacy_handle} found in {doc_name}"
+
+
+def test_hook_keywords_contain_no_legacy_aliases():
+    hook_file = PLUGIN_ROOT / "hooks" / "prompt_triage.py"
+    text = hook_file.read_text(encoding="utf-8")
+    for legacy_handle in ['"@investigate"', '"@monitoring"', '"@document"', '"@research"']:
+        assert legacy_handle not in text, f"Legacy handle {legacy_handle} should be removed from keyword tuples"
+

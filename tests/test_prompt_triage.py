@@ -268,6 +268,7 @@ def test_triage_response_coding():
     assert "=== Prompt Triage Telemetry & Metadata ===" in msg
     assert "invoke_subagent" in msg
     assert "coding" in msg
+    assert "@coding" in msg
 
 
 def test_triage_response_monitoring():
@@ -275,7 +276,7 @@ def test_triage_response_monitoring():
         use_router=False,
         installed_plugins={"agentic-coding-plugin", "agentic-investigate-plugin", "agentic-monitoring-plugin"},
     )
-    result = engine.triage("@monitoring watch the serial console /dev/ttyUSB0", invocation_num=0)
+    result = engine.triage("@coding-monitor watch the serial console /dev/ttyUSB0", invocation_num=0)
     assert result.intent == "monitoring"
     assert result.response_confidence >= CONFIDENCE_THRESHOLD
     assert len(result.inject_steps) > 0
@@ -284,6 +285,7 @@ def test_triage_response_monitoring():
     assert "=== Prompt Triage Telemetry & Metadata ===" in msg
     assert "invoke_subagent" in msg
     assert "monitoring" in msg
+    assert "@coding-monitor" in msg
 
 
 def test_triage_response_investigation():
@@ -300,6 +302,7 @@ def test_triage_response_investigation():
     assert "=== Prompt Triage Telemetry & Metadata ===" in msg
     assert "invoke_subagent" in msg
     assert "investigate" in msg
+    assert "@coding-investigate" in msg
 
 
 def test_triage_response_research():
@@ -323,6 +326,45 @@ def test_triage_response_research():
     assert "research" in msg
     assert "@coding-research" in msg
     assert "Topic Researcher" in msg
+
+
+def test_triage_response_documentation():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={
+            "agentic-coding-plugin",
+            "agentic-obsidian-plugin",
+        },
+    )
+    result = engine.triage("@coding-document document the project architecture in obsidian", invocation_num=0)
+    assert result.intent == "documentation"
+    assert result.response_confidence >= CONFIDENCE_THRESHOLD
+    assert len(result.inject_steps) > 0
+    assert "systemMessage" in result.inject_steps[0]
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+    assert "=== Prompt Triage Telemetry & Metadata ===" in msg
+    assert "invoke_subagent" in msg
+    assert "documentation" in msg
+    assert "@coding-document" in msg
+    assert "Documentation Specialist" in msg
+
+
+def test_all_dynamic_triage_directives_use_canonical_handles():
+    spec = build_dynamic_triage_spec({
+        "agentic-coding-plugin",
+        "agentic-investigate-plugin",
+        "agentic-monitoring-plugin",
+        "agentic-research-plugin",
+        "agentic-obsidian-plugin",
+    })
+    canonical = ["@coding", "@coding-investigate", "@coding-monitor", "@coding-research", "@coding-document"]
+    legacy = ["@investigate", "@monitoring", "@document", "@research"]
+
+    all_directives = " ".join(spec.response_to_directive.values())
+    for handle in canonical:
+        assert handle in all_directives, f"Canonical handle {handle} missing from directives"
+    for legacy_handle in legacy:
+        assert legacy_handle not in all_directives, f"Legacy handle {legacy_handle} should not be in directives"
 
 
 def test_triage_response_mixed():

@@ -8,6 +8,7 @@ Thank you for contributing to **`agentic-triage-plugin`**! This plugin provides 
 - Adhere to the standards defined in [`rules/AGENTS.md`](file:///Users/gpfister/Development/Projects/gpfister/agentic/agentic-triage-plugin/rules/AGENTS.md).
 - Keep triage non-blocking and fail-safe (hooks must never crash the parent agent execution loop).
 - Ensure dynamic evaluation properly detects installed plugins and adjusts criteria.
+- Ensure all triage routing directives map strictly to canonical subagent handles (`@coding`, `@coding-investigate`, `@coding-monitor`, `@coding-document`, `@coding-research`).
 
 ---
 
