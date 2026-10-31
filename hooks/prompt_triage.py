@@ -3,10 +3,10 @@
 
 Triages incoming user prompts dynamically using Laya Router System 1 model based on installed plugins:
 - Evaluates code change requests if agentic-coding-plugin is installed
-- Evaluates task monitoring requests if agentic-monitoring-plugin (or agentic-monitor-plugin) is installed
+- Evaluates task monitoring requests if agentic-monitor-plugin (or agentic-monitoring-plugin) is installed
 - Evaluates issue investigation requests if agentic-investigate-plugin is installed
 - Evaluates topic research requests if agentic-research-plugin is installed
-- Evaluates documentation requests if agentic-obsidian-plugin (or agentic-document-plugin) is installed
+- Evaluates documentation requests if agentic-document-plugin (or agentic-obsidian-plugin) is installed
 - Evaluates inquiries involving no changes (always in scope)
 - Detects mixed prompts across active capabilities
 
@@ -45,15 +45,20 @@ logger = logging.getLogger(__name__)
 CONFIDENCE_THRESHOLD = 0.40
 TRIAGE_QUESTION = "What is this prompt about ?"
 
-KNOWN_PLUGINS = {
+PRIMARY_PLUGINS = {
     "agentic-coding-plugin",
     "agentic-investigate-plugin",
-    "agentic-monitoring-plugin",
     "agentic-monitor-plugin",
-    "agentic-obsidian-plugin",
     "agentic-document-plugin",
     "agentic-research-plugin",
 }
+
+LEGACY_PLUGIN_ALIASES = {
+    "agentic-monitoring-plugin": "agentic-monitor-plugin",
+    "agentic-obsidian-plugin": "agentic-document-plugin",
+}
+
+KNOWN_PLUGINS = PRIMARY_PLUGINS | set(LEGACY_PLUGIN_ALIASES.keys())
 
 
 class DynamicTriageSpec(NamedTuple):
@@ -131,10 +136,10 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
         DynamicTriageSpec(responses, response_to_intent, intent_to_response, response_to_directive)
     """
     coding_enabled = "agentic-coding-plugin" in installed_plugins
-    monitoring_enabled = bool(installed_plugins & {"agentic-monitoring-plugin", "agentic-monitor-plugin"})
+    monitoring_enabled = bool(installed_plugins & {"agentic-monitor-plugin", "agentic-monitoring-plugin"})
     investigation_enabled = "agentic-investigate-plugin" in installed_plugins
     research_enabled = "agentic-research-plugin" in installed_plugins
-    documentation_enabled = bool(installed_plugins & {"agentic-obsidian-plugin", "agentic-document-plugin"})
+    documentation_enabled = bool(installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
 
     responses: dict[str, str] = {}
     r_to_intent: dict[str, str] = {}
@@ -167,7 +172,7 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
         )
         idx += 1
 
-    # Task monitoring request (if agentic-monitoring-plugin or agentic-monitor-plugin is installed)
+    # Task monitoring request (if agentic-monitor-plugin or agentic-monitoring-plugin is installed)
     if monitoring_enabled:
         r_key = f"response {idx}"
         responses[r_key] = "one or more task monitoring request"
@@ -209,7 +214,7 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
         )
         idx += 1
 
-    # Documentation request (if agentic-obsidian-plugin or agentic-document-plugin is installed)
+    # Documentation request (if agentic-document-plugin or agentic-obsidian-plugin is installed)
     if documentation_enabled:
         r_key = f"response {idx}"
         responses[r_key] = "one or more documentation request"
@@ -386,10 +391,10 @@ class LayaTriageEngine:
         prompt_lower = prompt.lower()
 
         coding_enabled = "agentic-coding-plugin" in self.installed_plugins
-        monitoring_enabled = bool(self.installed_plugins & {"agentic-monitoring-plugin", "agentic-monitor-plugin"})
+        monitoring_enabled = bool(self.installed_plugins & {"agentic-monitor-plugin", "agentic-monitoring-plugin"})
         investigation_enabled = "agentic-investigate-plugin" in self.installed_plugins
         research_enabled = "agentic-research-plugin" in self.installed_plugins
-        documentation_enabled = bool(self.installed_plugins & {"agentic-obsidian-plugin", "agentic-document-plugin"})
+        documentation_enabled = bool(self.installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
 
         has_monitoring = monitoring_enabled and any(
             w in prompt_lower

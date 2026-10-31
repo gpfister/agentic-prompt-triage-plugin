@@ -1,9 +1,20 @@
 """Tests for agentic-triage-plugin structure and specifications."""
 
 import json
+import sys
 from pathlib import Path
+import pytest
 
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+if str(PLUGIN_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_ROOT))
+
+from hooks.prompt_triage import (
+    PRIMARY_PLUGINS,
+    LEGACY_PLUGIN_ALIASES,
+    KNOWN_PLUGINS,
+    detect_installed_plugins,
+)
 
 
 def test_plugin_manifest_valid():
@@ -69,4 +80,61 @@ def test_hook_keywords_contain_no_legacy_aliases():
     text = hook_file.read_text(encoding="utf-8")
     for legacy_handle in ['"@investigate"', '"@monitoring"', '"@document"', '"@research"']:
         assert legacy_handle not in text, f"Legacy handle {legacy_handle} should be removed from keyword tuples"
+
+
+@pytest.fixture
+def workspace_with_primary_plugin_dirs(tmp_path: Path) -> Path:
+    ws = tmp_path / "primary_ws"
+    ws.mkdir()
+    for name in ["agentic-monitor-plugin", "agentic-document-plugin"]:
+        pdir = ws / name
+        pdir.mkdir()
+        manifest = pdir / "plugin.json"
+        manifest.write_text(json.dumps({"name": name, "version": "0.1.0"}), encoding="utf-8")
+    return ws
+
+
+@pytest.fixture
+def workspace_with_legacy_plugin_dirs(tmp_path: Path) -> Path:
+    ws = tmp_path / "legacy_ws"
+    ws.mkdir()
+    for name in ["agentic-monitoring-plugin", "agentic-obsidian-plugin"]:
+        pdir = ws / name
+        pdir.mkdir()
+        manifest = pdir / "plugin.json"
+        manifest.write_text(json.dumps({"name": name, "version": "0.1.0"}), encoding="utf-8")
+    return ws
+
+
+def test_detect_primary_plugin_directories(workspace_with_primary_plugin_dirs: Path):
+    detected = detect_installed_plugins(workspace_paths=[str(workspace_with_primary_plugin_dirs)])
+    assert "agentic-monitor-plugin" in detected
+    assert "agentic-document-plugin" in detected
+
+
+def test_detect_legacy_plugin_directories(workspace_with_legacy_plugin_dirs: Path):
+    detected = detect_installed_plugins(workspace_paths=[str(workspace_with_legacy_plugin_dirs)])
+    assert "agentic-monitoring-plugin" in detected
+    assert "agentic-obsidian-plugin" in detected
+
+
+def test_routing_table_documents_primary_and_fallback_names():
+    for doc_name in ["README.md", "rules/AGENTS.md"]:
+        doc_path = PLUGIN_ROOT / doc_name
+        text = doc_path.read_text(encoding="utf-8")
+        assert "agentic-monitor-plugin" in text
+        assert "agentic-monitoring-plugin" in text
+        assert "agentic-document-plugin" in text
+        assert "agentic-obsidian-plugin" in text
+
+
+def test_primary_and_legacy_plugins_defined():
+    assert "agentic-monitor-plugin" in PRIMARY_PLUGINS
+    assert "agentic-document-plugin" in PRIMARY_PLUGINS
+    assert "agentic-monitoring-plugin" in LEGACY_PLUGIN_ALIASES
+    assert "agentic-obsidian-plugin" in LEGACY_PLUGIN_ALIASES
+    assert LEGACY_PLUGIN_ALIASES["agentic-monitoring-plugin"] == "agentic-monitor-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-obsidian-plugin"] == "agentic-document-plugin"
+    assert PRIMARY_PLUGINS.issubset(KNOWN_PLUGINS)
+    assert set(LEGACY_PLUGIN_ALIASES.keys()).issubset(KNOWN_PLUGINS)
 

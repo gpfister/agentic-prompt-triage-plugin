@@ -24,6 +24,9 @@ from hooks.prompt_triage import (
     LayaTriageEngine,
     CONFIDENCE_THRESHOLD,
     TRIAGE_QUESTION,
+    PRIMARY_PLUGINS,
+    LEGACY_PLUGIN_ALIASES,
+    KNOWN_PLUGINS,
 )
 
 
@@ -68,10 +71,70 @@ def test_detect_installed_plugins_obsidian():
     assert plugins == {"agentic-obsidian-plugin"}
 
 
+def test_detect_installed_plugins_document():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-document-plugin"})
+    assert plugins == {"agentic-document-plugin"}
+
+
+def test_detect_installed_plugins_monitor():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-monitor-plugin"})
+    assert plugins == {"agentic-monitor-plugin"}
+
+
+def test_detect_installed_plugins_monitoring_legacy():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-monitoring-plugin"})
+    assert plugins == {"agentic-monitoring-plugin"}
+
+
 def test_detect_installed_plugins_env(monkeypatch):
     monkeypatch.setenv("INSTALLED_PLUGINS", "agentic-coding-plugin, agentic-monitoring-plugin, agentic-research-plugin")
     plugins = detect_installed_plugins()
     assert plugins == {"agentic-coding-plugin", "agentic-monitoring-plugin", "agentic-research-plugin"}
+
+
+def test_detect_installed_plugins_env_primary(monkeypatch):
+    monkeypatch.setenv(
+        "INSTALLED_PLUGINS",
+        "agentic-coding-plugin, agentic-monitor-plugin, agentic-document-plugin, agentic-research-plugin"
+    )
+    plugins = detect_installed_plugins()
+    assert plugins == {
+        "agentic-coding-plugin",
+        "agentic-monitor-plugin",
+        "agentic-document-plugin",
+        "agentic-research-plugin",
+    }
+
+
+@pytest.fixture
+def workspace_with_mixed_plugin_directories(tmp_path: Path) -> Path:
+    ws = tmp_path / "mixed_ws"
+    ws.mkdir()
+    # Primary plugins with manifest
+    for name in ["agentic-monitor-plugin", "agentic-document-plugin"]:
+        pdir = ws / name
+        pdir.mkdir()
+        manifest = pdir / "plugin.json"
+        manifest.write_text(json.dumps({"name": name, "version": "0.1.0"}), encoding="utf-8")
+    # Legacy plugins with manifest
+    for name in ["agentic-monitoring-plugin", "agentic-obsidian-plugin"]:
+        pdir = ws / name
+        pdir.mkdir()
+        manifest = pdir / "plugin.json"
+        manifest.write_text(json.dumps({"name": name, "version": "0.1.0"}), encoding="utf-8")
+    # Directory without manifest matching KNOWN_PLUGINS
+    pdir_no_manifest = ws / "agentic-research-plugin"
+    pdir_no_manifest.mkdir()
+    return ws
+
+
+def test_detect_installed_plugins_workspace_fixture(workspace_with_mixed_plugin_directories: Path):
+    detected = detect_installed_plugins(workspace_paths=[str(workspace_with_mixed_plugin_directories)])
+    assert "agentic-monitor-plugin" in detected
+    assert "agentic-document-plugin" in detected
+    assert "agentic-monitoring-plugin" in detected
+    assert "agentic-obsidian-plugin" in detected
+    assert "agentic-research-plugin" in detected
 
 
 def test_build_dynamic_triage_spec_all():
@@ -139,6 +202,61 @@ def test_build_dynamic_triage_spec_only_obsidian():
     assert "Documentation Specialist" in spec.response_to_directive["response 2"]
 
 
+def test_build_dynamic_triage_spec_only_document():
+    spec = build_dynamic_triage_spec({"agentic-document-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.responses["response 2"] == "one or more documentation request"
+    assert spec.response_to_intent["response 2"] == "documentation"
+    assert spec.intent_to_response["documentation"] == "response 2"
+    assert "coding" not in spec.intent_to_response
+    assert "investigation" not in spec.intent_to_response
+    assert "monitoring" not in spec.intent_to_response
+    assert "research" not in spec.intent_to_response
+    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert "@coding-document" in spec.response_to_directive["response 2"]
+    assert "Documentation Specialist" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_only_monitor():
+    spec = build_dynamic_triage_spec({"agentic-monitor-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.responses["response 2"] == "one or more task monitoring request"
+    assert spec.response_to_intent["response 2"] == "monitoring"
+    assert spec.intent_to_response["monitoring"] == "response 2"
+    assert "coding" not in spec.intent_to_response
+    assert "investigation" not in spec.intent_to_response
+    assert "documentation" not in spec.intent_to_response
+    assert "research" not in spec.intent_to_response
+    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert "@coding-monitor" in spec.response_to_directive["response 2"]
+    assert "Telemetry Monitor" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_all_five_primary():
+    spec = build_dynamic_triage_spec({
+        "agentic-coding-plugin",
+        "agentic-investigate-plugin",
+        "agentic-monitor-plugin",
+        "agentic-research-plugin",
+        "agentic-document-plugin",
+    })
+    assert len(spec.responses) == 7
+    assert spec.intent_to_response["question"] == "response 1"
+    assert spec.intent_to_response["coding"] == "response 2"
+    assert spec.intent_to_response["monitoring"] == "response 3"
+    assert spec.intent_to_response["investigation"] == "response 4"
+    assert spec.intent_to_response["research"] == "response 5"
+    assert spec.intent_to_response["documentation"] == "response 6"
+    assert spec.intent_to_response["mixed"] == "response 7"
+    assert spec.response_to_intent["response 3"] == "monitoring"
+    assert spec.response_to_intent["response 6"] == "documentation"
+    assert spec.response_to_intent["response 7"] == "mixed"
+    assert "@coding-monitor" in spec.response_to_directive["response 3"]
+    assert "@coding-document" in spec.response_to_directive["response 6"]
+
+
 def test_build_dynamic_triage_spec_all_five():
     spec = build_dynamic_triage_spec({
         "agentic-coding-plugin",
@@ -171,6 +289,45 @@ def test_heuristic_documentation_request():
     assert choice == engine.intent_to_response["documentation"]
     assert conf >= 0.90
     assert engine.response_to_intent[choice] == "documentation"
+
+
+def test_heuristic_documentation_request_document_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-document-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please document the project architecture and features in the vault"
+    )
+    assert choice == engine.intent_to_response["documentation"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "documentation"
+
+
+def test_heuristic_monitoring_request_monitor_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-monitor-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please monitor the log stream for failures"
+    )
+    assert choice == engine.intent_to_response["monitoring"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "monitoring"
+
+
+def test_heuristic_monitoring_request_monitoring_plugin_legacy():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-monitoring-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please monitor the log stream for failures"
+    )
+    assert choice == engine.intent_to_response["monitoring"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "monitoring"
 
 
 def test_build_dynamic_triage_spec_all_four():
