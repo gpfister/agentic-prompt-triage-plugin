@@ -12,6 +12,7 @@ This rule set applies whenever the `agentic-triage-plugin` is active in an Antig
   - Evaluate if it is a task monitoring request only if `agentic-monitor-plugin` (or `agentic-monitoring-plugin`) is installed (routes to `@coding-monitor`).
   - Evaluate if it is a topic research request only if `agentic-research-plugin` is installed (routes to `@coding-research`).
   - Evaluate if it is a documentation request only if `agentic-document-plugin` (or `agentic-obsidian-plugin`) is installed (routes to `@coding-document`).
+  - Evaluate if it is a project grooming request only if `agentic-project-grooming-plugin` is installed (routes to `/project-grooming <prompt>`).
   - Inquiries involving no changes are always supported.
   - If a requested capability is not supported by installed plugins, do not evaluate or include that response; respond directly with guidance.
 

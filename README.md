@@ -9,6 +9,7 @@ Dynamic prompt intent triage lifecycle hook for [Google Antigravity](https://ant
 - Evaluates task monitoring if `agentic-monitor-plugin` (or `agentic-monitoring-plugin`) is installed (routes to `@coding-monitor`).
 - Evaluates topic and web research if `agentic-research-plugin` is installed (routes to `@coding-research`).
 - Evaluates documentation requests if `agentic-document-plugin` (or `agentic-obsidian-plugin`) is installed (routes to `@coding-document`).
+- Evaluates project grooming requests if `agentic-project-grooming-plugin` is installed (routes to `/project-grooming <prompt>`).
 - Handles informational inquiries directly without code modifications.
 - Rejects conflicting mixed prompts, asking users to separate their requests.
 

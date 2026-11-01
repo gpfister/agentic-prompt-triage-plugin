@@ -131,6 +131,7 @@ def test_routing_table_documents_primary_and_fallback_names():
 def test_primary_and_legacy_plugins_defined():
     assert "agentic-monitor-plugin" in PRIMARY_PLUGINS
     assert "agentic-document-plugin" in PRIMARY_PLUGINS
+    assert "agentic-project-grooming-plugin" in PRIMARY_PLUGINS
     assert "agentic-monitoring-plugin" in LEGACY_PLUGIN_ALIASES
     assert "agentic-obsidian-plugin" in LEGACY_PLUGIN_ALIASES
     assert LEGACY_PLUGIN_ALIASES["agentic-monitoring-plugin"] == "agentic-monitor-plugin"

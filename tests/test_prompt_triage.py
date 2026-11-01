@@ -651,3 +651,131 @@ def test_triage_hook_skips_when_invocation_num_greater_than_zero(tmp_path: Path)
     assert proc.returncode == 0
     output = json.loads(proc.stdout)
     assert output == {"injectSteps": []}
+
+
+def test_detect_installed_plugins_grooming():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-project-grooming-plugin"})
+    assert plugins == {"agentic-project-grooming-plugin"}
+
+
+def test_build_dynamic_triage_spec_only_grooming():
+    spec = build_dynamic_triage_spec({"agentic-project-grooming-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.responses["response 2"] == "one or more project grooming or scaffolding requests"
+    assert spec.response_to_intent["response 2"] == "grooming"
+    assert spec.intent_to_response["grooming"] == "response 2"
+    assert "coding" not in spec.intent_to_response
+    assert "investigation" not in spec.intent_to_response
+    assert "monitoring" not in spec.intent_to_response
+    assert "research" not in spec.intent_to_response
+    assert "documentation" not in spec.intent_to_response
+    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert "/project-grooming <prompt>" in spec.response_to_directive["response 2"]
+    assert "project grooming skill" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_grooming_absent():
+    spec = build_dynamic_triage_spec({"agentic-coding-plugin", "agentic-document-plugin"})
+    assert "grooming" not in spec.intent_to_response
+    assert not any("grooming" in desc for desc in spec.responses.values())
+    mixed_directive = spec.response_to_directive.get(spec.intent_to_response.get("mixed", ""), "")
+    assert "project grooming requests" not in mixed_directive
+
+
+def test_build_dynamic_triage_spec_all_six_primary():
+    spec = build_dynamic_triage_spec({
+        "agentic-coding-plugin",
+        "agentic-investigate-plugin",
+        "agentic-monitor-plugin",
+        "agentic-research-plugin",
+        "agentic-document-plugin",
+        "agentic-project-grooming-plugin",
+    })
+    assert len(spec.responses) == 8
+    assert spec.intent_to_response["question"] == "response 1"
+    assert spec.intent_to_response["coding"] == "response 2"
+    assert spec.intent_to_response["monitoring"] == "response 3"
+    assert spec.intent_to_response["investigation"] == "response 4"
+    assert spec.intent_to_response["research"] == "response 5"
+    assert spec.intent_to_response["documentation"] == "response 6"
+    assert spec.intent_to_response["grooming"] == "response 7"
+    assert spec.intent_to_response["mixed"] == "response 8"
+    assert spec.response_to_intent["response 7"] == "grooming"
+    assert spec.response_to_intent["response 8"] == "mixed"
+    assert "/project-grooming" in spec.response_to_directive["response 7"]
+    assert "project grooming requests" in spec.responses["response 8"]
+
+
+def test_triage_response_grooming():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-project-grooming-plugin", "agentic-coding-plugin"},
+    )
+    test_cases = [
+        "Please groom the project repository",
+        "Scaffold project structure for the new backend",
+        "Initialize project workspace with proper templates",
+        "Setup workspace for agentic plugins",
+        "/project-grooming configure the directory layout",
+        "Run project-grooming to standardize rules",
+    ]
+    for prompt in test_cases:
+        result = engine.triage(prompt, invocation_num=0)
+        assert result.intent == "grooming", f"Expected grooming for prompt: {prompt}"
+        assert result.response_confidence >= CONFIDENCE_THRESHOLD
+        assert len(result.inject_steps) > 0
+        assert "systemMessage" in result.inject_steps[0]
+        msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+        assert "=== Prompt Triage Telemetry & Metadata ===" in msg
+        assert "/project-grooming <prompt>" in msg
+        assert "project grooming or scaffolding request" in msg
+
+
+def test_triage_grooming_absent_fallback():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    assert "grooming" not in engine.intent_to_response
+    assert "grooming" not in engine.response_to_intent.values()
+    choice, conf, probs = engine.evaluate_system1_triage("Please groom the project repository")
+    assert choice != "grooming"
+    assert engine.response_to_intent.get(choice) != "grooming"
+
+
+def test_triage_response_mixed_with_grooming():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin", "agentic-project-grooming-plugin"},
+    )
+    result = engine.triage(
+        "Groom the project repository and implement a new payment gateway",
+        invocation_num=0,
+    )
+    assert result.intent == "mixed"
+    assert result.response_confidence >= CONFIDENCE_THRESHOLD
+    assert len(result.inject_steps) > 0
+    assert "systemMessage" in result.inject_steps[0]
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+    assert "=== Prompt Triage Telemetry & Metadata ===" in msg
+    assert "cannot process a mix" in msg
+
+
+def test_triage_response_mixed_grooming_and_inquiry():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-project-grooming-plugin"},
+    )
+    result = engine.triage(
+        "Explain how the directory structure works and also groom the project",
+        invocation_num=0,
+    )
+    assert result.intent == "mixed"
+    assert result.response_confidence >= CONFIDENCE_THRESHOLD
+    assert len(result.inject_steps) > 0
+    assert "systemMessage" in result.inject_steps[0]
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+    assert "=== Prompt Triage Telemetry & Metadata ===" in msg
+    assert "cannot process a mix" in msg
+

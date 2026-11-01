@@ -7,6 +7,7 @@ Triages incoming user prompts dynamically using Laya Router System 1 model based
 - Evaluates issue investigation requests if agentic-investigate-plugin is installed
 - Evaluates topic research requests if agentic-research-plugin is installed
 - Evaluates documentation requests if agentic-document-plugin (or agentic-obsidian-plugin) is installed
+- Evaluates project grooming requests if agentic-project-grooming-plugin is installed
 - Evaluates inquiries involving no changes (always in scope)
 - Detects mixed prompts across active capabilities
 
@@ -17,6 +18,7 @@ If one response has confidence >= 0.4, directly triggers the corresponding triag
 - investigation: main agent invokes @coding-investigate subagent using invoke_subagent
 - research: main agent invokes @coding-research subagent using invoke_subagent
 - documentation: main agent invokes @coding-document subagent using invoke_subagent
+- grooming: main agent invokes /project-grooming <prompt>
 - mixed: main agent rejects prompt (cannot process mixed requests)
 
 Otherwise (confidence < 0.4), instructs the main agent to ask the user via ask_question.
@@ -51,6 +53,7 @@ PRIMARY_PLUGINS = {
     "agentic-monitor-plugin",
     "agentic-document-plugin",
     "agentic-research-plugin",
+    "agentic-project-grooming-plugin",
 }
 
 LEGACY_PLUGIN_ALIASES = {
@@ -140,6 +143,7 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
     investigation_enabled = "agentic-investigate-plugin" in installed_plugins
     research_enabled = "agentic-research-plugin" in installed_plugins
     documentation_enabled = bool(installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
+    grooming_enabled = "agentic-project-grooming-plugin" in installed_plugins
 
     responses: dict[str, str] = {}
     r_to_intent: dict[str, str] = {}
@@ -228,8 +232,21 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
         )
         idx += 1
 
+    # Project grooming request (if agentic-project-grooming-plugin is installed)
+    if grooming_enabled:
+        r_key = f"response {idx}"
+        responses[r_key] = "one or more project grooming or scaffolding requests"
+        r_to_intent[r_key] = "grooming"
+        intent_to_r["grooming"] = r_key
+        r_to_directive[r_key] = (
+            f"Prompt Triage Directive: {r_key} identified (project grooming or scaffolding request). "
+            "You must invoke the project grooming skill using `/project-grooming <prompt>`. "
+            "Do not perform grooming or scaffolding directly without the skill."
+        )
+        idx += 1
+
     # Mixed request (if at least one capability is enabled alongside inquiries)
-    if any([coding_enabled, monitoring_enabled, investigation_enabled, research_enabled, documentation_enabled]):
+    if any([coding_enabled, monitoring_enabled, investigation_enabled, research_enabled, documentation_enabled, grooming_enabled]):
         r_key = f"response {idx}"
         parts = ["inquiries"]
         if coding_enabled:
@@ -242,6 +259,8 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
             parts.append("topic research requests")
         if documentation_enabled:
             parts.append("documentation requests")
+        if grooming_enabled:
+            parts.append("project grooming requests")
         desc = f"a mix of {', '.join(parts[:-1])} and/or {parts[-1]}"
 
         responses[r_key] = desc
@@ -326,7 +345,7 @@ class TriageResult(BaseModel):
         default=False,
         description="True if confidence < 0.40 requiring ask_question user selection",
     )
-    intent: Optional[str] = Field(default=None, description="Semantic intent: question, coding, monitoring, investigation, research, or mixed")
+    intent: Optional[str] = Field(default=None, description="Semantic intent: question, coding, monitoring, investigation, research, grooming, or mixed")
     intent_confidence: float = Field(default=1.0, description="Confidence of intent classification")
     inject_steps: List[Dict[str, Any]] = Field(default_factory=list, description="Antigravity injectSteps payload")
     installed_plugins: List[str] = Field(default_factory=list, description="Plugins detected active during triage")
@@ -395,6 +414,7 @@ class LayaTriageEngine:
         investigation_enabled = "agentic-investigate-plugin" in self.installed_plugins
         research_enabled = "agentic-research-plugin" in self.installed_plugins
         documentation_enabled = bool(self.installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
+        grooming_enabled = "agentic-project-grooming-plugin" in self.installed_plugins
 
         has_monitoring = monitoring_enabled and any(
             w in prompt_lower
@@ -437,6 +457,14 @@ class LayaTriageEngine:
                 "record session", "store session", "store artifacts", "record the result of the monitoring"
             ]
         )
+        has_grooming = grooming_enabled and any(
+            w in prompt_lower
+            for w in [
+                "groom", "grooming", "project grooming", "scaffold project", "initialize project",
+                "setup workspace", "/project-grooming", "project-grooming", "scaffold", "scaffolding",
+                "groom workspace", "workspace grooming"
+            ]
+        )
         has_inquiry = any(
             w in prompt_lower
             for w in ["how", "what", "why", "explain", "review", "inquiry", "is there", "can you tell", "describe", "where"]
@@ -454,7 +482,21 @@ class LayaTriageEngine:
         if has_documentation and not has_monitoring and not has_coding and not has_investigation and not has_research and not any(w in prompt_lower for w in ["explain", "describe", "also"]):
             has_inquiry = False
 
-        mixed_count = sum([bool(has_monitoring), bool(has_coding), bool(has_inquiry), bool(has_investigation), bool(has_research), bool(has_documentation)])
+        if has_grooming and not any(w in prompt_lower for w in ["implement", "code change", "bugfix", "refactor", "write code"]) and not re.search(r"@coding(?![a-zA-Z0-9_\-])", prompt_lower):
+            has_coding = False
+
+        if has_grooming and not has_monitoring and not has_coding and not has_investigation and not has_research and not has_documentation and not any(w in prompt_lower for w in ["explain", "describe", "also"]):
+            has_inquiry = False
+
+        mixed_count = sum([
+            bool(has_monitoring),
+            bool(has_coding),
+            bool(has_inquiry),
+            bool(has_investigation),
+            bool(has_research),
+            bool(has_documentation),
+            bool(has_grooming),
+        ])
         mixed_key = self.intent_to_response.get("mixed")
 
         # Initialize base uniform probabilities across active responses
@@ -491,6 +533,12 @@ class LayaTriageEngine:
 
         if has_documentation and "documentation" in self.intent_to_response:
             r_key = self.intent_to_response["documentation"]
+            probs = dict(base_probs)
+            probs[r_key] = 0.92
+            return r_key, 0.92, probs
+
+        if has_grooming and "grooming" in self.intent_to_response:
+            r_key = self.intent_to_response["grooming"]
             probs = dict(base_probs)
             probs[r_key] = 0.92
             return r_key, 0.92, probs
