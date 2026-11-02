@@ -1,5 +1,5 @@
 [project]
-name = "agentic-triage-plugin"
+name = "agentic-prompt-triage-plugin"
 version = "0.1.0"
 description = "Dynamic prompt intent triage lifecycle hook using Laya Router System 1 model."
 readme = "README.md"

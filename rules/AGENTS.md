@@ -1,6 +1,6 @@
-# Prompt Triage Standards & Guidelines — agentic-triage-plugin
+# Prompt Triage Standards & Guidelines — agentic-prompt-triage-plugin
 
-This rule set applies whenever the `agentic-triage-plugin` is active in an Antigravity session.
+This rule set applies whenever the `agentic-prompt-triage-plugin` is active in an Antigravity session.
 
 ---
 

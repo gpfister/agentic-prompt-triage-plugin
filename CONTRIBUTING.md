@@ -1,11 +1,11 @@
-# Contributing to agentic-triage-plugin
+# Contributing to agentic-prompt-triage-plugin
 
-Thank you for contributing to **`agentic-triage-plugin`**! This plugin provides dynamic System 1 prompt triage for Google Antigravity.
+Thank you for contributing to **`agentic-prompt-triage-plugin`**! This plugin provides dynamic System 1 prompt triage for Google Antigravity.
 
 ---
 
 ## 1. Core Guidelines
-- Adhere to the standards defined in [`rules/AGENTS.md`](file:///Users/gpfister/Development/Projects/gpfister/agentic/agentic-triage-plugin/rules/AGENTS.md).
+- Adhere to the standards defined in [`rules/AGENTS.md`](file:///Users/gpfister/Development/Projects/gpfister/agentic/agentic-prompt-triage-plugin/rules/AGENTS.md).
 - Keep triage non-blocking and fail-safe (hooks must never crash the parent agent execution loop).
 - Ensure dynamic evaluation properly detects installed plugins and adjusts criteria.
 - Ensure all triage routing directives map strictly to canonical subagent handles (`@coding`, `@coding-investigate`, `@coding-monitor`, `@coding-document`, `@coding-research`).
@@ -15,7 +15,7 @@ Thank you for contributing to **`agentic-triage-plugin`**! This plugin provides 
 ## 2. Directory Structure
 
 ```text
-agentic-triage-plugin/
+agentic-prompt-triage-plugin/
 ├── plugin.json         # Plugin manifest
 ├── hooks.json          # PreInvocation hook definition
 ├── pyproject.toml      # Project configuration and uv dependencies

@@ -1,4 +1,4 @@
-"""Tests for agentic-triage-plugin structure and specifications."""
+"""Tests for agentic-prompt-triage-plugin structure and specifications."""
 
 import json
 import sys
@@ -21,7 +21,7 @@ def test_plugin_manifest_valid():
     manifest_file = PLUGIN_ROOT / "plugin.json"
     assert manifest_file.exists(), "plugin.json must exist"
     data = json.loads(manifest_file.read_text(encoding="utf-8"))
-    assert data.get("name") == "agentic-triage-plugin"
+    assert data.get("name") == "agentic-prompt-triage-plugin"
     assert data.get("license") == "MIT"
     assert "version" in data
 
@@ -38,7 +38,7 @@ def test_contributing_exists():
     contrib_file = PLUGIN_ROOT / "CONTRIBUTING.md"
     assert contrib_file.exists(), "CONTRIBUTING.md must exist"
     content = contrib_file.read_text(encoding="utf-8")
-    assert "agentic-triage-plugin" in content
+    assert "agentic-prompt-triage-plugin" in content
 
 
 def test_hooks_json_valid():
