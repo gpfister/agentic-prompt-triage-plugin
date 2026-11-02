@@ -86,6 +86,47 @@ def test_detect_installed_plugins_monitoring_legacy():
     assert plugins == {"agentic-monitoring-plugin"}
 
 
+def test_detect_installed_plugins_canonical_task_monitoring():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-task-monitoring-plugin"})
+    assert plugins == {"agentic-task-monitoring-plugin"}
+
+
+def test_detect_installed_plugins_canonical_issue_investigation():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-issue-investigation-plugin"})
+    assert plugins == {"agentic-issue-investigation-plugin"}
+
+
+def test_detect_installed_plugins_legacy_investigate():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-investigate-plugin"})
+    assert plugins == {"agentic-investigate-plugin"}
+
+
+def test_detect_installed_plugins_canonical_topic_researching():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-topic-researching-plugin"})
+    assert plugins == {"agentic-topic-researching-plugin"}
+
+
+def test_detect_installed_plugins_canonical_project_documenting():
+    plugins = detect_installed_plugins(custom_plugins={"agentic-project-documenting-plugin"})
+    assert plugins == {"agentic-project-documenting-plugin"}
+
+
+def test_detect_installed_plugins_env_canonical(monkeypatch):
+    monkeypatch.setenv(
+        "INSTALLED_PLUGINS",
+        "agentic-coding-plugin, agentic-task-monitoring-plugin, agentic-issue-investigation-plugin, agentic-topic-researching-plugin, agentic-project-documenting-plugin, agentic-project-grooming-plugin"
+    )
+    plugins = detect_installed_plugins()
+    assert plugins == {
+        "agentic-coding-plugin",
+        "agentic-task-monitoring-plugin",
+        "agentic-issue-investigation-plugin",
+        "agentic-topic-researching-plugin",
+        "agentic-project-documenting-plugin",
+        "agentic-project-grooming-plugin",
+    }
+
+
 def test_detect_installed_plugins_env(monkeypatch):
     monkeypatch.setenv("INSTALLED_PLUGINS", "agentic-coding-plugin, agentic-monitoring-plugin, agentic-research-plugin")
     plugins = detect_installed_plugins()
@@ -135,6 +176,99 @@ def test_detect_installed_plugins_workspace_fixture(workspace_with_mixed_plugin_
     assert "agentic-monitoring-plugin" in detected
     assert "agentic-obsidian-plugin" in detected
     assert "agentic-research-plugin" in detected
+
+
+@pytest.fixture
+def workspace_with_canonical_plugin_directories(tmp_path: Path) -> Path:
+    ws = tmp_path / "canonical_ws"
+    ws.mkdir()
+    canonical_names = [
+        "agentic-coding-plugin",
+        "agentic-issue-investigation-plugin",
+        "agentic-task-monitoring-plugin",
+        "agentic-topic-researching-plugin",
+        "agentic-project-documenting-plugin",
+        "agentic-project-grooming-plugin",
+    ]
+    for name in canonical_names:
+        pdir = ws / name
+        pdir.mkdir()
+        manifest = pdir / "plugin.json"
+        manifest.write_text(json.dumps({"name": name, "version": "0.1.0"}), encoding="utf-8")
+    return ws
+
+
+def test_detect_installed_plugins_all_canonical_directories(workspace_with_canonical_plugin_directories: Path):
+    detected = detect_installed_plugins(workspace_paths=[str(workspace_with_canonical_plugin_directories)])
+    assert "agentic-coding-plugin" in detected
+    assert "agentic-issue-investigation-plugin" in detected
+    assert "agentic-task-monitoring-plugin" in detected
+    assert "agentic-topic-researching-plugin" in detected
+    assert "agentic-project-documenting-plugin" in detected
+    assert "agentic-project-grooming-plugin" in detected
+
+
+def test_build_dynamic_triage_spec_canonical_investigation():
+    spec = build_dynamic_triage_spec({"agentic-issue-investigation-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.response_to_intent["response 2"] == "investigation"
+    assert spec.intent_to_response["investigation"] == "response 2"
+    assert "@coding-investigate" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_canonical_monitoring():
+    spec = build_dynamic_triage_spec({"agentic-task-monitoring-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.response_to_intent["response 2"] == "monitoring"
+    assert spec.intent_to_response["monitoring"] == "response 2"
+    assert "@coding-monitor" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_canonical_research():
+    spec = build_dynamic_triage_spec({"agentic-topic-researching-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.response_to_intent["response 2"] == "research"
+    assert spec.intent_to_response["research"] == "response 2"
+    assert "@coding-research" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_canonical_documenting():
+    spec = build_dynamic_triage_spec({"agentic-project-documenting-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert spec.response_to_intent["response 2"] == "documentation"
+    assert spec.intent_to_response["documentation"] == "response 2"
+    assert "@coding-document" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_all_six_canonical():
+    spec = build_dynamic_triage_spec({
+        "agentic-coding-plugin",
+        "agentic-issue-investigation-plugin",
+        "agentic-task-monitoring-plugin",
+        "agentic-topic-researching-plugin",
+        "agentic-project-documenting-plugin",
+        "agentic-project-grooming-plugin",
+    })
+    assert len(spec.responses) == 8
+    assert spec.intent_to_response["question"] == "response 1"
+    assert spec.intent_to_response["coding"] == "response 2"
+    assert spec.intent_to_response["monitoring"] == "response 3"
+    assert spec.intent_to_response["investigation"] == "response 4"
+    assert spec.intent_to_response["research"] == "response 5"
+    assert spec.intent_to_response["documentation"] == "response 6"
+    assert spec.intent_to_response["grooming"] == "response 7"
+    assert spec.intent_to_response["mixed"] == "response 8"
+    assert spec.response_to_intent["response 2"] == "coding"
+    assert spec.response_to_intent["response 3"] == "monitoring"
+    assert spec.response_to_intent["response 4"] == "investigation"
+    assert spec.response_to_intent["response 5"] == "research"
+    assert spec.response_to_intent["response 6"] == "documentation"
+    assert spec.response_to_intent["response 7"] == "grooming"
+    assert spec.response_to_intent["response 8"] == "mixed"
 
 
 def test_build_dynamic_triage_spec_all():
@@ -328,6 +462,58 @@ def test_heuristic_monitoring_request_monitoring_plugin_legacy():
     assert choice == engine.intent_to_response["monitoring"]
     assert conf >= 0.90
     assert engine.response_to_intent[choice] == "monitoring"
+
+
+def test_heuristic_documentation_request_canonical_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-project-documenting-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please document the project architecture and features in the vault"
+    )
+    assert choice == engine.intent_to_response["documentation"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "documentation"
+
+
+def test_heuristic_monitoring_request_canonical_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-task-monitoring-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please monitor the log stream for failures"
+    )
+    assert choice == engine.intent_to_response["monitoring"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "monitoring"
+
+
+def test_heuristic_investigation_request_canonical_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-issue-investigation-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please investigate why the checkout endpoint returns 500 error"
+    )
+    assert choice == engine.intent_to_response["investigation"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "investigation"
+
+
+def test_heuristic_research_request_canonical_plugin():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-topic-researching-plugin", "agentic-coding-plugin"},
+    )
+    choice, conf, probs = engine.evaluate_system1_triage(
+        "Please conduct deep research on state of the art retrieval models"
+    )
+    assert choice == engine.intent_to_response["research"]
+    assert conf >= 0.90
+    assert engine.response_to_intent[choice] == "research"
 
 
 def test_build_dynamic_triage_spec_all_four():

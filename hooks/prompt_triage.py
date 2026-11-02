@@ -3,10 +3,10 @@
 
 Triages incoming user prompts dynamically using Laya Router System 1 model based on installed plugins:
 - Evaluates code change requests if agentic-coding-plugin is installed
-- Evaluates task monitoring requests if agentic-monitor-plugin (or agentic-monitoring-plugin) is installed
-- Evaluates issue investigation requests if agentic-investigate-plugin is installed
-- Evaluates topic research requests if agentic-research-plugin is installed
-- Evaluates documentation requests if agentic-document-plugin (or agentic-obsidian-plugin) is installed
+- Evaluates task monitoring requests if agentic-task-monitoring-plugin (or agentic-monitor-plugin) is installed
+- Evaluates issue investigation requests if agentic-issue-investigation-plugin (or agentic-investigate-plugin) is installed
+- Evaluates topic research requests if agentic-topic-researching-plugin (or agentic-research-plugin) is installed
+- Evaluates documentation requests if agentic-project-documenting-plugin (or agentic-document-plugin, agentic-obsidian-plugin) is installed
 - Evaluates project grooming requests if agentic-project-grooming-plugin is installed
 - Evaluates inquiries involving no changes (always in scope)
 - Detects mixed prompts across active capabilities
@@ -49,16 +49,20 @@ TRIAGE_QUESTION = "What is this prompt about ?"
 
 PRIMARY_PLUGINS = {
     "agentic-coding-plugin",
-    "agentic-investigate-plugin",
-    "agentic-monitor-plugin",
-    "agentic-document-plugin",
-    "agentic-research-plugin",
+    "agentic-issue-investigation-plugin",
+    "agentic-project-documenting-plugin",
     "agentic-project-grooming-plugin",
+    "agentic-task-monitoring-plugin",
+    "agentic-topic-researching-plugin",
 }
 
 LEGACY_PLUGIN_ALIASES = {
-    "agentic-monitoring-plugin": "agentic-monitor-plugin",
-    "agentic-obsidian-plugin": "agentic-document-plugin",
+    "agentic-investigate-plugin": "agentic-issue-investigation-plugin",
+    "agentic-monitor-plugin": "agentic-task-monitoring-plugin",
+    "agentic-monitoring-plugin": "agentic-task-monitoring-plugin",
+    "agentic-document-plugin": "agentic-project-documenting-plugin",
+    "agentic-obsidian-plugin": "agentic-project-documenting-plugin",
+    "agentic-research-plugin": "agentic-topic-researching-plugin",
 }
 
 KNOWN_PLUGINS = PRIMARY_PLUGINS | set(LEGACY_PLUGIN_ALIASES.keys())
@@ -124,6 +128,8 @@ def detect_installed_plugins(
                     name = data.get("name") or path.name
                     if name in KNOWN_PLUGINS:
                         installed.add(name)
+                    if path.name in KNOWN_PLUGINS:
+                        installed.add(path.name)
                 except Exception:
                     pass
             elif path.name in KNOWN_PLUGINS:
@@ -139,10 +145,32 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
         DynamicTriageSpec(responses, response_to_intent, intent_to_response, response_to_directive)
     """
     coding_enabled = "agentic-coding-plugin" in installed_plugins
-    monitoring_enabled = bool(installed_plugins & {"agentic-monitor-plugin", "agentic-monitoring-plugin"})
-    investigation_enabled = "agentic-investigate-plugin" in installed_plugins
-    research_enabled = "agentic-research-plugin" in installed_plugins
-    documentation_enabled = bool(installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
+    monitoring_enabled = bool(
+        installed_plugins & {
+            "agentic-task-monitoring-plugin",
+            "agentic-monitor-plugin",
+            "agentic-monitoring-plugin",
+        }
+    )
+    investigation_enabled = bool(
+        installed_plugins & {
+            "agentic-issue-investigation-plugin",
+            "agentic-investigate-plugin",
+        }
+    )
+    research_enabled = bool(
+        installed_plugins & {
+            "agentic-topic-researching-plugin",
+            "agentic-research-plugin",
+        }
+    )
+    documentation_enabled = bool(
+        installed_plugins & {
+            "agentic-project-documenting-plugin",
+            "agentic-document-plugin",
+            "agentic-obsidian-plugin",
+        }
+    )
     grooming_enabled = "agentic-project-grooming-plugin" in installed_plugins
 
     responses: dict[str, str] = {}
@@ -410,10 +438,32 @@ class LayaTriageEngine:
         prompt_lower = prompt.lower()
 
         coding_enabled = "agentic-coding-plugin" in self.installed_plugins
-        monitoring_enabled = bool(self.installed_plugins & {"agentic-monitor-plugin", "agentic-monitoring-plugin"})
-        investigation_enabled = "agentic-investigate-plugin" in self.installed_plugins
-        research_enabled = "agentic-research-plugin" in self.installed_plugins
-        documentation_enabled = bool(self.installed_plugins & {"agentic-document-plugin", "agentic-obsidian-plugin"})
+        monitoring_enabled = bool(
+            self.installed_plugins & {
+                "agentic-task-monitoring-plugin",
+                "agentic-monitor-plugin",
+                "agentic-monitoring-plugin",
+            }
+        )
+        investigation_enabled = bool(
+            self.installed_plugins & {
+                "agentic-issue-investigation-plugin",
+                "agentic-investigate-plugin",
+            }
+        )
+        research_enabled = bool(
+            self.installed_plugins & {
+                "agentic-topic-researching-plugin",
+                "agentic-research-plugin",
+            }
+        )
+        documentation_enabled = bool(
+            self.installed_plugins & {
+                "agentic-project-documenting-plugin",
+                "agentic-document-plugin",
+                "agentic-obsidian-plugin",
+            }
+        )
         grooming_enabled = "agentic-project-grooming-plugin" in self.installed_plugins
 
         has_monitoring = monitoring_enabled and any(

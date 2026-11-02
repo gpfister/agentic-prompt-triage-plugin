@@ -86,7 +86,7 @@ def test_hook_keywords_contain_no_legacy_aliases():
 def workspace_with_primary_plugin_dirs(tmp_path: Path) -> Path:
     ws = tmp_path / "primary_ws"
     ws.mkdir()
-    for name in ["agentic-monitor-plugin", "agentic-document-plugin"]:
+    for name in ["agentic-task-monitoring-plugin", "agentic-project-documenting-plugin"]:
         pdir = ws / name
         pdir.mkdir()
         manifest = pdir / "plugin.json"
@@ -98,7 +98,7 @@ def workspace_with_primary_plugin_dirs(tmp_path: Path) -> Path:
 def workspace_with_legacy_plugin_dirs(tmp_path: Path) -> Path:
     ws = tmp_path / "legacy_ws"
     ws.mkdir()
-    for name in ["agentic-monitoring-plugin", "agentic-obsidian-plugin"]:
+    for name in ["agentic-monitoring-plugin", "agentic-obsidian-plugin", "agentic-monitor-plugin", "agentic-document-plugin"]:
         pdir = ws / name
         pdir.mkdir()
         manifest = pdir / "plugin.json"
@@ -108,34 +108,52 @@ def workspace_with_legacy_plugin_dirs(tmp_path: Path) -> Path:
 
 def test_detect_primary_plugin_directories(workspace_with_primary_plugin_dirs: Path):
     detected = detect_installed_plugins(workspace_paths=[str(workspace_with_primary_plugin_dirs)])
-    assert "agentic-monitor-plugin" in detected
-    assert "agentic-document-plugin" in detected
+    assert "agentic-task-monitoring-plugin" in detected
+    assert "agentic-project-documenting-plugin" in detected
 
 
 def test_detect_legacy_plugin_directories(workspace_with_legacy_plugin_dirs: Path):
     detected = detect_installed_plugins(workspace_paths=[str(workspace_with_legacy_plugin_dirs)])
     assert "agentic-monitoring-plugin" in detected
     assert "agentic-obsidian-plugin" in detected
+    assert "agentic-monitor-plugin" in detected
+    assert "agentic-document-plugin" in detected
 
 
 def test_routing_table_documents_primary_and_fallback_names():
     for doc_name in ["README.md", "rules/AGENTS.md"]:
         doc_path = PLUGIN_ROOT / doc_name
         text = doc_path.read_text(encoding="utf-8")
+        assert "agentic-task-monitoring-plugin" in text
         assert "agentic-monitor-plugin" in text
         assert "agentic-monitoring-plugin" in text
+        assert "agentic-project-documenting-plugin" in text
         assert "agentic-document-plugin" in text
         assert "agentic-obsidian-plugin" in text
 
 
 def test_primary_and_legacy_plugins_defined():
-    assert "agentic-monitor-plugin" in PRIMARY_PLUGINS
-    assert "agentic-document-plugin" in PRIMARY_PLUGINS
+    assert "agentic-coding-plugin" in PRIMARY_PLUGINS
+    assert "agentic-issue-investigation-plugin" in PRIMARY_PLUGINS
+    assert "agentic-project-documenting-plugin" in PRIMARY_PLUGINS
     assert "agentic-project-grooming-plugin" in PRIMARY_PLUGINS
+    assert "agentic-task-monitoring-plugin" in PRIMARY_PLUGINS
+    assert "agentic-topic-researching-plugin" in PRIMARY_PLUGINS
+
+    assert "agentic-investigate-plugin" in LEGACY_PLUGIN_ALIASES
+    assert "agentic-monitor-plugin" in LEGACY_PLUGIN_ALIASES
     assert "agentic-monitoring-plugin" in LEGACY_PLUGIN_ALIASES
+    assert "agentic-document-plugin" in LEGACY_PLUGIN_ALIASES
     assert "agentic-obsidian-plugin" in LEGACY_PLUGIN_ALIASES
-    assert LEGACY_PLUGIN_ALIASES["agentic-monitoring-plugin"] == "agentic-monitor-plugin"
-    assert LEGACY_PLUGIN_ALIASES["agentic-obsidian-plugin"] == "agentic-document-plugin"
+    assert "agentic-research-plugin" in LEGACY_PLUGIN_ALIASES
+
+    assert LEGACY_PLUGIN_ALIASES["agentic-investigate-plugin"] == "agentic-issue-investigation-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-monitor-plugin"] == "agentic-task-monitoring-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-monitoring-plugin"] == "agentic-task-monitoring-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-document-plugin"] == "agentic-project-documenting-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-obsidian-plugin"] == "agentic-project-documenting-plugin"
+    assert LEGACY_PLUGIN_ALIASES["agentic-research-plugin"] == "agentic-topic-researching-plugin"
+
     assert PRIMARY_PLUGINS.issubset(KNOWN_PLUGINS)
     assert set(LEGACY_PLUGIN_ALIASES.keys()).issubset(KNOWN_PLUGINS)
 
