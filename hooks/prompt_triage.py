@@ -11,7 +11,7 @@ Triages incoming user prompts dynamically using Laya Router System 1 model based
 - Evaluates inquiries involving no changes (always in scope)
 - Detects mixed prompts across active capabilities
 
-If one response has confidence >= 0.4, directly triggers the corresponding triage action:
+If one response has confidence >= 0.8, directly triggers the corresponding triage action:
 - inquiries: main agent responds directly to prompt (no changes directive)
 - coding: main agent invokes @coding subagent using invoke_subagent
 - monitoring: main agent invokes @coding-monitor subagent using invoke_subagent
@@ -21,7 +21,7 @@ If one response has confidence >= 0.4, directly triggers the corresponding triag
 - grooming: main agent invokes /project-grooming <prompt>
 - mixed: main agent rejects prompt (cannot process mixed requests)
 
-Otherwise (confidence < 0.4), instructs the main agent to ask the user via ask_question.
+Otherwise (confidence < 0.8), instructs the main agent to ask the user via ask_question.
 All triage instructions and Laya Router question metadata are passed via systemMessage.
 """
 
@@ -44,7 +44,7 @@ warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
 
-CONFIDENCE_THRESHOLD = 0.40
+CONFIDENCE_THRESHOLD = 0.80
 TRIAGE_QUESTION = "What is this prompt about ?"
 
 PRIMARY_PLUGINS = {
@@ -371,7 +371,7 @@ class TriageResult(BaseModel):
     )
     requires_user_confirmation: bool = Field(
         default=False,
-        description="True if confidence < 0.40 requiring ask_question user selection",
+        description="True if confidence < 0.80 requiring ask_question user selection",
     )
     intent: Optional[str] = Field(default=None, description="Semantic intent: question, coding, monitoring, investigation, research, grooming, or mixed")
     intent_confidence: float = Field(default=1.0, description="Confidence of intent classification")
@@ -599,7 +599,7 @@ class LayaTriageEngine:
             probs[r_key] = 0.88
             return r_key, 0.88, probs
 
-        # Ambiguous fallback (< 0.40) to present options to user
+        # Ambiguous fallback (< 0.80) to present options to user
         default_key = "response 1"
         probs = {r: 1.0 / len(self.triage_responses) for r in self.triage_responses}
         probs[default_key] = 0.30
@@ -637,11 +637,21 @@ class LayaTriageEngine:
         inject_steps: list[dict[str, Any]] = []
 
         if conf < CONFIDENCE_THRESHOLD and len(self.triage_responses) > 1:
-            options = list(self.triage_responses.values())
-            options_text = "\n".join([f'  {i+1}. "{opt}"' for i, opt in enumerate(options)])
+            sorted_responses = sorted(
+                self.triage_responses.items(),
+                key=lambda item: probs.get(item[0], 0.0),
+                reverse=True,
+            )
+            formatted_options = []
+            for i, (r_key, r_desc) in enumerate(sorted_responses):
+                pct = round(probs.get(r_key, 0.0) * 100)
+                prefix = "(Recommended) " if i == 0 else ""
+                formatted_options.append(f"{prefix}{r_desc} ({pct}%)")
+
+            options_text = "\n".join([f'  {i+1}. "{opt}"' for i, opt in enumerate(formatted_options)])
             rules_text = "\n".join([
                 f"- If {r_k} ('{r_desc}') is selected: {self.response_to_directive.get(r_k, '')}"
-                for r_k, r_desc in self.triage_responses.items()
+                for r_k, r_desc in sorted_responses
             ])
 
             ask_guidance = (

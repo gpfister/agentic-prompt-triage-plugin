@@ -965,3 +965,64 @@ def test_triage_response_mixed_grooming_and_inquiry():
     assert "=== Prompt Triage Telemetry & Metadata ===" in msg
     assert "cannot process a mix" in msg
 
+
+def test_confidence_threshold_is_0_80():
+    assert CONFIDENCE_THRESHOLD == 0.80
+
+
+def test_triage_low_confidence_sorted_with_percentages_and_recommended(monkeypatch):
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin", "agentic-issue-investigation-plugin"},
+    )
+    probs = {
+        "response 1": 0.144,  # 14%
+        "response 2": 0.556,  # 56% -> highest, should be first and (Recommended)
+        "response 3": 0.245,  # 24% -> second
+        "response 4": 0.055,  # 6%
+    }
+    monkeypatch.setattr(
+        engine,
+        "evaluate_system1_triage",
+        lambda prompt: ("response 2", 0.556, probs),
+    )
+
+    result = engine.triage("ambiguous prompt", invocation_num=0)
+    assert result.requires_user_confirmation is True
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+
+    expected_options = [
+        '  1. "(Recommended) one or more code change request (56%)"',
+        '  2. "one or more issue investigation request (24%)"',
+        '  3. "one or more inquiries involving no changes (14%)"',
+        '  4. "a mix of inquiries, code change requests and/or issue investigation requests (6%)"',
+    ]
+    options_block = "\n".join(expected_options)
+    assert f"- Options:\n{options_block}" in msg
+
+
+def test_triage_boundary_below_and_at_0_80(monkeypatch):
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    probs_below = {"response 1": 0.15, "response 2": 0.79, "response 3": 0.06}
+    monkeypatch.setattr(
+        engine,
+        "evaluate_system1_triage",
+        lambda prompt: ("response 2", 0.79, probs_below),
+    )
+    res_below = engine.triage("slightly uncertain", invocation_num=0)
+    assert res_below.requires_user_confirmation is True
+    assert "ask_question" in res_below.inject_steps[0]["systemMessage"]["systemMessage"]
+
+    probs_at = {"response 1": 0.15, "response 2": 0.80, "response 3": 0.05}
+    monkeypatch.setattr(
+        engine,
+        "evaluate_system1_triage",
+        lambda prompt: ("response 2", 0.80, probs_at),
+    )
+    res_at = engine.triage("confident enough", invocation_num=0)
+    assert res_at.requires_user_confirmation is False
+    assert "ask_question" not in res_at.inject_steps[0]["systemMessage"]["systemMessage"]
+
