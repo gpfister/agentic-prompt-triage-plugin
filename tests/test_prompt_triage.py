@@ -1026,3 +1026,105 @@ def test_triage_boundary_below_and_at_0_80(monkeypatch):
     assert res_at.requires_user_confirmation is False
     assert "ask_question" not in res_at.inject_steps[0]["systemMessage"]["systemMessage"]
 
+
+def test_detect_installed_plugins_design():
+    assert "agentic-design-plugin" in PRIMARY_PLUGINS
+    assert "agentic-design-plugin" in KNOWN_PLUGINS
+    plugins = detect_installed_plugins(custom_plugins={"agentic-design-plugin"})
+    assert plugins == {"agentic-design-plugin"}
+
+
+def test_detect_installed_plugins_design_workspace_directory(tmp_path: Path):
+    ws = tmp_path / "design_ws"
+    ws.mkdir()
+    pdir = ws / "agentic-design-plugin"
+    pdir.mkdir()
+    (pdir / "plugin.json").write_text(
+        json.dumps({"name": "agentic-design-plugin", "version": "0.1.0"}),
+        encoding="utf-8",
+    )
+    detected = detect_installed_plugins(workspace_paths=[str(ws)])
+    assert "agentic-design-plugin" in detected
+
+
+def test_build_dynamic_triage_spec_only_design():
+    spec = build_dynamic_triage_spec({"agentic-design-plugin"})
+    assert "response 1" in spec.responses
+    assert "response 2" in spec.responses
+    assert (
+        spec.responses["response 2"]
+        == "one or more UI/UX design, wireframe, mockup, design-token, or PenPot requests"
+    )
+    assert spec.response_to_intent["response 2"] == "design"
+    assert spec.intent_to_response["design"] == "response 2"
+    assert "coding" not in spec.intent_to_response
+    assert "investigation" not in spec.intent_to_response
+    assert "monitoring" not in spec.intent_to_response
+    assert "research" not in spec.intent_to_response
+    assert "documentation" not in spec.intent_to_response
+    assert "grooming" not in spec.intent_to_response
+    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert "invoke_subagent(TypeName='coding-design', Role='UI/UX Designer', Prompt=...)" in spec.response_to_directive["response 2"]
+    assert "@coding-design" in spec.response_to_directive["response 2"]
+
+
+def test_build_dynamic_triage_spec_design_absent():
+    spec = build_dynamic_triage_spec({"agentic-coding-plugin", "agentic-document-plugin"})
+    assert "design" not in spec.intent_to_response
+    assert not any("PenPot" in desc or "UI/UX" in desc for desc in spec.responses.values())
+    assert not any("coding-design" in d for d in spec.response_to_directive.values())
+    mixed_directive = spec.response_to_directive.get(spec.intent_to_response.get("mixed", ""), "")
+    assert "UI/UX design requests" not in mixed_directive
+
+
+def test_triage_response_design():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-design-plugin", "agentic-coding-plugin"},
+    )
+    test_cases = [
+        "Create a UI/UX wireframe for the login page",
+        "Design a dashboard mockup in PenPot",
+        "Extract design tokens from the PenPot file",
+        "Update the design-token palette for dark mode",
+        "Ask @coding-design to review the user interface prototype",
+    ]
+    for prompt in test_cases:
+        result = engine.triage(prompt, invocation_num=0)
+        assert result.intent == "design", f"Expected design for prompt: {prompt}"
+        assert result.response_confidence >= CONFIDENCE_THRESHOLD
+        assert len(result.inject_steps) > 0
+        assert "systemMessage" in result.inject_steps[0]
+        msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+        assert "=== Prompt Triage Telemetry & Metadata ===" in msg
+        assert "invoke_subagent(TypeName='coding-design', Role='UI/UX Designer', Prompt=...)" in msg
+        assert "@coding-design" in msg
+
+
+def test_triage_design_absent_fallback():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    assert "design" not in engine.intent_to_response
+    assert "design" not in engine.response_to_intent.values()
+    choice, conf, probs = engine.evaluate_system1_triage("Create a PenPot wireframe for the login screen")
+    assert engine.response_to_intent.get(choice) != "design"
+
+
+def test_triage_response_mixed_with_design():
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin", "agentic-design-plugin"},
+    )
+    result = engine.triage(
+        "Create a PenPot wireframe and implement the backend authentication API",
+        invocation_num=0,
+    )
+    assert result.intent == "mixed"
+    assert result.response_confidence >= CONFIDENCE_THRESHOLD
+    assert len(result.inject_steps) > 0
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+    assert "cannot process a mix" in msg
+
+
