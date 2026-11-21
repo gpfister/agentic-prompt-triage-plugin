@@ -13,6 +13,7 @@ This rule set applies whenever the `agentic-prompt-triage-plugin` is active in a
   - Evaluate if it is a topic research request only if `agentic-topic-researching-plugin` (or `agentic-research-plugin`) is installed (routes to `@coding-research`).
   - Evaluate if it is a documentation request only if `agentic-project-documenting-plugin` (or `agentic-document-plugin`, `agentic-obsidian-plugin`) is installed (routes to `@coding-document`).
   - Evaluate if it is a project grooming request only if `agentic-project-grooming-plugin` is installed (routes to `/project-grooming <prompt>`).
+  - Evaluate if it is a UI/UX design request only if `agentic-design-plugin` is installed (routes to `@coding-design`).
   - Inquiries involving no changes are always supported.
   - If a requested capability is not supported by installed plugins, do not evaluate or include that response; respond directly with guidance.
 
