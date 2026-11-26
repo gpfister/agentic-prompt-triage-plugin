@@ -210,38 +210,42 @@ def test_detect_installed_plugins_all_canonical_directories(workspace_with_canon
 
 def test_build_dynamic_triage_spec_canonical_investigation():
     spec = build_dynamic_triage_spec({"agentic-issue-investigation-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "investigation"
-    assert spec.intent_to_response["investigation"] == "response 2"
-    assert "@coding-investigate" in spec.response_to_directive["response 2"]
+    assert "inquiry" in spec.responses
+    assert "investigation" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["investigation"] == "investigation"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert "@coding-investigate" in spec.response_to_directive["investigation"]
 
 
 def test_build_dynamic_triage_spec_canonical_monitoring():
     spec = build_dynamic_triage_spec({"agentic-task-monitoring-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "monitoring"
-    assert spec.intent_to_response["monitoring"] == "response 2"
-    assert "@coding-monitor" in spec.response_to_directive["response 2"]
+    assert "inquiry" in spec.responses
+    assert "monitoring" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["monitoring"] == "monitoring"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert "@coding-monitor" in spec.response_to_directive["monitoring"]
 
 
 def test_build_dynamic_triage_spec_canonical_research():
     spec = build_dynamic_triage_spec({"agentic-topic-researching-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "research"
-    assert spec.intent_to_response["research"] == "response 2"
-    assert "@coding-research" in spec.response_to_directive["response 2"]
+    assert "inquiry" in spec.responses
+    assert "research" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["research"] == "research"
+    assert spec.intent_to_response["research"] == "research"
+    assert "@coding-research" in spec.response_to_directive["research"]
 
 
 def test_build_dynamic_triage_spec_canonical_documenting():
     spec = build_dynamic_triage_spec({"agentic-project-documenting-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "documentation"
-    assert spec.intent_to_response["documentation"] == "response 2"
-    assert "@coding-document" in spec.response_to_directive["response 2"]
+    assert "inquiry" in spec.responses
+    assert "documentation" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.intent_to_response["documentation"] == "documentation"
+    assert "@coding-document" in spec.response_to_directive["documentation"]
 
 
 def test_build_dynamic_triage_spec_all_six_canonical():
@@ -253,119 +257,126 @@ def test_build_dynamic_triage_spec_all_six_canonical():
         "agentic-project-documenting-plugin",
         "agentic-project-grooming-plugin",
     })
-    assert len(spec.responses) == 8
-    assert spec.intent_to_response["question"] == "response 1"
-    assert spec.intent_to_response["coding"] == "response 2"
-    assert spec.intent_to_response["monitoring"] == "response 3"
-    assert spec.intent_to_response["investigation"] == "response 4"
-    assert spec.intent_to_response["research"] == "response 5"
-    assert spec.intent_to_response["documentation"] == "response 6"
-    assert spec.intent_to_response["grooming"] == "response 7"
-    assert spec.intent_to_response["mixed"] == "response 8"
-    assert spec.response_to_intent["response 2"] == "coding"
-    assert spec.response_to_intent["response 3"] == "monitoring"
-    assert spec.response_to_intent["response 4"] == "investigation"
-    assert spec.response_to_intent["response 5"] == "research"
-    assert spec.response_to_intent["response 6"] == "documentation"
-    assert spec.response_to_intent["response 7"] == "grooming"
-    assert spec.response_to_intent["response 8"] == "mixed"
+    assert len(spec.responses) == 7
+    assert "mixed" not in spec.responses
+    assert spec.intent_to_response["question"] == "inquiry"
+    assert spec.intent_to_response["coding"] == "coding"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert spec.intent_to_response["research"] == "research"
+    assert spec.intent_to_response["documentation"] == "documentation"
+    assert spec.intent_to_response["grooming"] == "grooming"
+    assert spec.intent_to_response["mixed"] == "mixed"
+    assert spec.response_to_intent["coding"] == "coding"
+    assert spec.response_to_intent["monitoring"] == "monitoring"
+    assert spec.response_to_intent["investigation"] == "investigation"
+    assert spec.response_to_intent["research"] == "research"
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.response_to_intent["grooming"] == "grooming"
+    assert spec.response_to_intent["mixed"] == "mixed"
 
 
 def test_build_dynamic_triage_spec_all():
     spec = build_dynamic_triage_spec(
         {"agentic-coding-plugin", "agentic-investigate-plugin", "agentic-monitoring-plugin"}
     )
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "coding"
+    assert "inquiry" in spec.responses
+    assert "coding" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["coding"] == "coding"
     assert "coding" in spec.intent_to_response
     assert "investigation" in spec.intent_to_response
     assert "monitoring" in spec.intent_to_response
     mixed_key = spec.intent_to_response.get("mixed")
-    assert mixed_key is not None
+    assert mixed_key == "mixed"
     assert spec.response_to_intent[mixed_key] == "mixed"
 
 
 def test_build_dynamic_triage_spec_only_coding():
     spec = build_dynamic_triage_spec({"agentic-coding-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
+    assert "inquiry" in spec.responses
+    assert "coding" in spec.responses
+    assert "mixed" not in spec.responses
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
-    assert spec.response_to_intent["response 2"] == "coding"
-    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert spec.response_to_intent["coding"] == "coding"
+    assert spec.intent_to_response.get("mixed") == "mixed"
 
 
 def test_build_dynamic_triage_spec_only_investigate():
     spec = build_dynamic_triage_spec({"agentic-investigate-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.response_to_intent["response 2"] == "investigation"
+    assert "inquiry" in spec.responses
+    assert "investigation" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["investigation"] == "investigation"
     assert "coding" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
+    assert spec.intent_to_response.get("mixed") == "mixed"
 
 
 def test_build_dynamic_triage_spec_only_research():
     spec = build_dynamic_triage_spec({"agentic-research-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.responses["response 2"] == "one or more topic research or information retrieval requests"
-    assert spec.response_to_intent["response 2"] == "research"
-    assert spec.intent_to_response["research"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "research" in spec.responses
+    assert "mixed" not in spec.responses
+    assert "research" in spec.responses["research"].lower()
+    assert spec.response_to_intent["research"] == "research"
+    assert spec.intent_to_response["research"] == "research"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "@coding-research" in spec.response_to_directive["response 2"]
-    assert "Topic Researcher" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "@coding-research" in spec.response_to_directive["research"]
+    assert "Topic Researcher" in spec.response_to_directive["research"]
 
 
 def test_build_dynamic_triage_spec_only_obsidian():
     spec = build_dynamic_triage_spec({"agentic-obsidian-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.responses["response 2"] == "one or more documentation request"
-    assert spec.response_to_intent["response 2"] == "documentation"
-    assert spec.intent_to_response["documentation"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "documentation" in spec.responses
+    assert "mixed" not in spec.responses
+    assert "obsidian" in spec.responses["documentation"].lower()
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.intent_to_response["documentation"] == "documentation"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
     assert "research" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "@coding-document" in spec.response_to_directive["response 2"]
-    assert "Documentation Specialist" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "@coding-document" in spec.response_to_directive["documentation"]
+    assert "Documentation Specialist" in spec.response_to_directive["documentation"]
 
 
 def test_build_dynamic_triage_spec_only_document():
     spec = build_dynamic_triage_spec({"agentic-document-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.responses["response 2"] == "one or more documentation request"
-    assert spec.response_to_intent["response 2"] == "documentation"
-    assert spec.intent_to_response["documentation"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "documentation" in spec.responses
+    assert "mixed" not in spec.responses
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.intent_to_response["documentation"] == "documentation"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
     assert "research" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "@coding-document" in spec.response_to_directive["response 2"]
-    assert "Documentation Specialist" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "@coding-document" in spec.response_to_directive["documentation"]
+    assert "Documentation Specialist" in spec.response_to_directive["documentation"]
 
 
 def test_build_dynamic_triage_spec_only_monitor():
     spec = build_dynamic_triage_spec({"agentic-monitor-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.responses["response 2"] == "one or more task monitoring request"
-    assert spec.response_to_intent["response 2"] == "monitoring"
-    assert spec.intent_to_response["monitoring"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "monitoring" in spec.responses
+    assert "mixed" not in spec.responses
+    assert "monitor" in spec.responses["monitoring"].lower()
+    assert spec.response_to_intent["monitoring"] == "monitoring"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "documentation" not in spec.intent_to_response
     assert "research" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "@coding-monitor" in spec.response_to_directive["response 2"]
-    assert "Telemetry Monitor" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "@coding-monitor" in spec.response_to_directive["monitoring"]
+    assert "Telemetry Monitor" in spec.response_to_directive["monitoring"]
 
 
 def test_build_dynamic_triage_spec_all_five_primary():
@@ -376,19 +387,20 @@ def test_build_dynamic_triage_spec_all_five_primary():
         "agentic-research-plugin",
         "agentic-document-plugin",
     })
-    assert len(spec.responses) == 7
-    assert spec.intent_to_response["question"] == "response 1"
-    assert spec.intent_to_response["coding"] == "response 2"
-    assert spec.intent_to_response["monitoring"] == "response 3"
-    assert spec.intent_to_response["investigation"] == "response 4"
-    assert spec.intent_to_response["research"] == "response 5"
-    assert spec.intent_to_response["documentation"] == "response 6"
-    assert spec.intent_to_response["mixed"] == "response 7"
-    assert spec.response_to_intent["response 3"] == "monitoring"
-    assert spec.response_to_intent["response 6"] == "documentation"
-    assert spec.response_to_intent["response 7"] == "mixed"
-    assert "@coding-monitor" in spec.response_to_directive["response 3"]
-    assert "@coding-document" in spec.response_to_directive["response 6"]
+    assert len(spec.responses) == 6
+    assert "mixed" not in spec.responses
+    assert spec.intent_to_response["question"] == "inquiry"
+    assert spec.intent_to_response["coding"] == "coding"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert spec.intent_to_response["research"] == "research"
+    assert spec.intent_to_response["documentation"] == "documentation"
+    assert spec.intent_to_response["mixed"] == "mixed"
+    assert spec.response_to_intent["monitoring"] == "monitoring"
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.response_to_intent["mixed"] == "mixed"
+    assert "@coding-monitor" in spec.response_to_directive["monitoring"]
+    assert "@coding-document" in spec.response_to_directive["documentation"]
 
 
 def test_build_dynamic_triage_spec_all_five():
@@ -399,17 +411,18 @@ def test_build_dynamic_triage_spec_all_five():
         "agentic-research-plugin",
         "agentic-obsidian-plugin",
     })
-    assert len(spec.responses) == 7
-    assert spec.intent_to_response["question"] == "response 1"
-    assert spec.intent_to_response["coding"] == "response 2"
-    assert spec.intent_to_response["monitoring"] == "response 3"
-    assert spec.intent_to_response["investigation"] == "response 4"
-    assert spec.intent_to_response["research"] == "response 5"
-    assert spec.intent_to_response["documentation"] == "response 6"
-    assert spec.intent_to_response["mixed"] == "response 7"
-    assert spec.response_to_intent["response 6"] == "documentation"
-    assert spec.response_to_intent["response 7"] == "mixed"
-    assert "@coding-document" in spec.response_to_directive["response 6"]
+    assert len(spec.responses) == 6
+    assert "mixed" not in spec.responses
+    assert spec.intent_to_response["question"] == "inquiry"
+    assert spec.intent_to_response["coding"] == "coding"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert spec.intent_to_response["research"] == "research"
+    assert spec.intent_to_response["documentation"] == "documentation"
+    assert spec.intent_to_response["mixed"] == "mixed"
+    assert spec.response_to_intent["documentation"] == "documentation"
+    assert spec.response_to_intent["mixed"] == "mixed"
+    assert "@coding-document" in spec.response_to_directive["documentation"]
 
 
 def test_heuristic_documentation_request():
@@ -523,21 +536,22 @@ def test_build_dynamic_triage_spec_all_four():
         "agentic-monitoring-plugin",
         "agentic-research-plugin",
     })
-    assert len(spec.responses) == 6
-    assert spec.intent_to_response["question"] == "response 1"
-    assert spec.intent_to_response["coding"] == "response 2"
-    assert spec.intent_to_response["monitoring"] == "response 3"
-    assert spec.intent_to_response["investigation"] == "response 4"
-    assert spec.intent_to_response["research"] == "response 5"
-    assert spec.intent_to_response["mixed"] == "response 6"
-    assert spec.response_to_intent["response 5"] == "research"
-    assert spec.response_to_intent["response 6"] == "mixed"
-    assert "@coding-research" in spec.response_to_directive["response 5"]
+    assert len(spec.responses) == 5
+    assert "mixed" not in spec.responses
+    assert spec.intent_to_response["question"] == "inquiry"
+    assert spec.intent_to_response["coding"] == "coding"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert spec.intent_to_response["research"] == "research"
+    assert spec.intent_to_response["mixed"] == "mixed"
+    assert spec.response_to_intent["research"] == "research"
+    assert spec.response_to_intent["mixed"] == "mixed"
+    assert "@coding-research" in spec.response_to_directive["research"]
 
 
 def test_build_dynamic_triage_spec_none():
     spec = build_dynamic_triage_spec(set())
-    assert "response 1" in spec.responses
+    assert "inquiry" in spec.responses
     assert len(spec.responses) == 1
     assert "mixed" not in spec.intent_to_response
 
@@ -555,15 +569,15 @@ def test_prompt_triage_hook_allow():
 
         assert isinstance(result, HookResult)
         assert result.allow is True
-        assert result.message in ("response 1", "question")
+        assert result.message in ("inquiry", "question")
         assert context.get_state("triage_intent") == "question"
-        assert context.get_state("response_choice") == "response 1"
+        assert context.get_state("response_choice") == "inquiry"
         inject_steps = context.get_state("inject_steps")
         assert len(inject_steps) > 0
         assert "systemMessage" in inject_steps[0]
         assert "ephemeralMessage" not in inject_steps[0]
         sys_msg = inject_steps[0]["systemMessage"]["systemMessage"]
-        assert "What is this prompt about ?" in sys_msg
+        assert TRIAGE_QUESTION in sys_msg
         assert "Prompt Triage Directive" in sys_msg
         assert "Do not make any changes" in sys_msg
 
@@ -586,14 +600,14 @@ def test_triage_response1_inquiries_no_changes():
         installed_plugins={"agentic-coding-plugin", "agentic-investigate-plugin", "agentic-monitoring-plugin"},
     )
     result = engine.triage("Can you explain how this module works?", invocation_num=0)
-    assert result.response_choice == "response 1"
+    assert result.response_choice == "inquiry"
     assert result.intent == "question"
     assert result.response_confidence >= CONFIDENCE_THRESHOLD
     assert len(result.inject_steps) > 0
     assert "systemMessage" in result.inject_steps[0]
     msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
     assert "=== Prompt Triage Telemetry & Metadata ===" in msg
-    assert "What is this prompt about ?" in msg
+    assert TRIAGE_QUESTION in msg
     assert "Do not make any changes" in msg
 
 
@@ -787,9 +801,9 @@ def test_triage_ambiguous_low_confidence_triggers_ask_question():
     inject_str = str(result.inject_steps[0])
     assert "=== Prompt Triage Telemetry & Metadata ===" in inject_str
     assert "ask_question" in inject_str
-    assert "What is this prompt about ?" in inject_str
-    assert "one or more inquiries involving no changes" in inject_str
-    assert "one or more code change request" in inject_str
+    assert TRIAGE_QUESTION in inject_str
+    assert engine.triage_responses["inquiry"] in inject_str
+    assert engine.triage_responses["coding"] in inject_str
 
 
 def test_triage_hook_script_cli(tmp_path: Path):
@@ -815,7 +829,7 @@ def test_triage_hook_script_cli(tmp_path: Path):
     assert "systemMessage" in step
     assert "ephemeralMessage" not in step
     msg = step["systemMessage"]["systemMessage"]
-    assert "What is this prompt about ?" in msg
+    assert TRIAGE_QUESTION in msg
     assert "Telemetry & Metadata" in msg
 
 
@@ -846,27 +860,26 @@ def test_detect_installed_plugins_grooming():
 
 def test_build_dynamic_triage_spec_only_grooming():
     spec = build_dynamic_triage_spec({"agentic-project-grooming-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert spec.responses["response 2"] == "one or more project grooming or scaffolding requests"
-    assert spec.response_to_intent["response 2"] == "grooming"
-    assert spec.intent_to_response["grooming"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "grooming" in spec.responses
+    assert "mixed" not in spec.responses
+    assert "groom" in spec.responses["grooming"].lower()
+    assert spec.response_to_intent["grooming"] == "grooming"
+    assert spec.intent_to_response["grooming"] == "grooming"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
     assert "research" not in spec.intent_to_response
     assert "documentation" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "/project-grooming <prompt>" in spec.response_to_directive["response 2"]
-    assert "project grooming skill" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "/project-grooming <prompt>" in spec.response_to_directive["grooming"]
+    assert "project grooming skill" in spec.response_to_directive["grooming"]
 
 
 def test_build_dynamic_triage_spec_grooming_absent():
     spec = build_dynamic_triage_spec({"agentic-coding-plugin", "agentic-document-plugin"})
     assert "grooming" not in spec.intent_to_response
-    assert not any("grooming" in desc for desc in spec.responses.values())
-    mixed_directive = spec.response_to_directive.get(spec.intent_to_response.get("mixed", ""), "")
-    assert "project grooming requests" not in mixed_directive
+    assert not any("groom" in desc.lower() for desc in spec.responses.values())
 
 
 def test_build_dynamic_triage_spec_all_six_primary():
@@ -878,19 +891,19 @@ def test_build_dynamic_triage_spec_all_six_primary():
         "agentic-document-plugin",
         "agentic-project-grooming-plugin",
     })
-    assert len(spec.responses) == 8
-    assert spec.intent_to_response["question"] == "response 1"
-    assert spec.intent_to_response["coding"] == "response 2"
-    assert spec.intent_to_response["monitoring"] == "response 3"
-    assert spec.intent_to_response["investigation"] == "response 4"
-    assert spec.intent_to_response["research"] == "response 5"
-    assert spec.intent_to_response["documentation"] == "response 6"
-    assert spec.intent_to_response["grooming"] == "response 7"
-    assert spec.intent_to_response["mixed"] == "response 8"
-    assert spec.response_to_intent["response 7"] == "grooming"
-    assert spec.response_to_intent["response 8"] == "mixed"
-    assert "/project-grooming" in spec.response_to_directive["response 7"]
-    assert "project grooming requests" in spec.responses["response 8"]
+    assert len(spec.responses) == 7
+    assert "mixed" not in spec.responses
+    assert spec.intent_to_response["question"] == "inquiry"
+    assert spec.intent_to_response["coding"] == "coding"
+    assert spec.intent_to_response["monitoring"] == "monitoring"
+    assert spec.intent_to_response["investigation"] == "investigation"
+    assert spec.intent_to_response["research"] == "research"
+    assert spec.intent_to_response["documentation"] == "documentation"
+    assert spec.intent_to_response["grooming"] == "grooming"
+    assert spec.intent_to_response["mixed"] == "mixed"
+    assert spec.response_to_intent["grooming"] == "grooming"
+    assert spec.response_to_intent["mixed"] == "mixed"
+    assert "/project-grooming" in spec.response_to_directive["grooming"]
 
 
 def test_triage_response_grooming():
@@ -976,15 +989,14 @@ def test_triage_low_confidence_sorted_with_percentages_and_recommended(monkeypat
         installed_plugins={"agentic-coding-plugin", "agentic-issue-investigation-plugin"},
     )
     probs = {
-        "response 1": 0.144,  # 14%
-        "response 2": 0.556,  # 56% -> highest, should be first and (Recommended)
-        "response 3": 0.245,  # 24% -> second
-        "response 4": 0.055,  # 6%
+        "inquiry": 0.144,        # 14%
+        "coding": 0.556,         # 56% -> highest, should be first and (Recommended)
+        "investigation": 0.300,  # 30% -> second
     }
     monkeypatch.setattr(
         engine,
         "evaluate_system1_triage",
-        lambda prompt: ("response 2", 0.556, probs),
+        lambda prompt: ("coding", 0.556, probs),
     )
 
     result = engine.triage("ambiguous prompt", invocation_num=0)
@@ -992,10 +1004,9 @@ def test_triage_low_confidence_sorted_with_percentages_and_recommended(monkeypat
     msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
 
     expected_options = [
-        '  1. "(Recommended) one or more code change request (56%)"',
-        '  2. "one or more issue investigation request (24%)"',
-        '  3. "one or more inquiries involving no changes (14%)"',
-        '  4. "a mix of inquiries, code change requests and/or issue investigation requests (6%)"',
+        f'  1. "(Recommended) {engine.triage_responses["coding"]} (56%)"',
+        f'  2. "{engine.triage_responses["investigation"]} (30%)"',
+        f'  3. "{engine.triage_responses["inquiry"]} (14%)"',
     ]
     options_block = "\n".join(expected_options)
     assert f"- Options:\n{options_block}" in msg
@@ -1006,21 +1017,21 @@ def test_triage_boundary_below_and_at_0_80(monkeypatch):
         use_router=False,
         installed_plugins={"agentic-coding-plugin"},
     )
-    probs_below = {"response 1": 0.15, "response 2": 0.79, "response 3": 0.06}
+    probs_below = {"inquiry": 0.21, "coding": 0.79}
     monkeypatch.setattr(
         engine,
         "evaluate_system1_triage",
-        lambda prompt: ("response 2", 0.79, probs_below),
+        lambda prompt: ("coding", 0.79, probs_below),
     )
     res_below = engine.triage("slightly uncertain", invocation_num=0)
     assert res_below.requires_user_confirmation is True
     assert "ask_question" in res_below.inject_steps[0]["systemMessage"]["systemMessage"]
 
-    probs_at = {"response 1": 0.15, "response 2": 0.80, "response 3": 0.05}
+    probs_at = {"inquiry": 0.20, "coding": 0.80}
     monkeypatch.setattr(
         engine,
         "evaluate_system1_triage",
-        lambda prompt: ("response 2", 0.80, probs_at),
+        lambda prompt: ("coding", 0.80, probs_at),
     )
     res_at = engine.triage("confident enough", invocation_num=0)
     assert res_at.requires_user_confirmation is False
@@ -1049,23 +1060,21 @@ def test_detect_installed_plugins_design_workspace_directory(tmp_path: Path):
 
 def test_build_dynamic_triage_spec_only_design():
     spec = build_dynamic_triage_spec({"agentic-design-plugin"})
-    assert "response 1" in spec.responses
-    assert "response 2" in spec.responses
-    assert (
-        spec.responses["response 2"]
-        == "one or more UI/UX design, wireframe, mockup, design-token, or PenPot requests"
-    )
-    assert spec.response_to_intent["response 2"] == "design"
-    assert spec.intent_to_response["design"] == "response 2"
+    assert "inquiry" in spec.responses
+    assert "design" in spec.responses
+    assert "mixed" not in spec.responses
+    assert "penpot" in spec.responses["design"].lower()
+    assert spec.response_to_intent["design"] == "design"
+    assert spec.intent_to_response["design"] == "design"
     assert "coding" not in spec.intent_to_response
     assert "investigation" not in spec.intent_to_response
     assert "monitoring" not in spec.intent_to_response
     assert "research" not in spec.intent_to_response
     assert "documentation" not in spec.intent_to_response
     assert "grooming" not in spec.intent_to_response
-    assert spec.intent_to_response.get("mixed") == "response 3"
-    assert "invoke_subagent(TypeName='coding-design', Role='UI/UX Designer', Prompt=...)" in spec.response_to_directive["response 2"]
-    assert "@coding-design" in spec.response_to_directive["response 2"]
+    assert spec.intent_to_response.get("mixed") == "mixed"
+    assert "invoke_subagent(TypeName='coding-design', Role='UI/UX Designer', Prompt=...)" in spec.response_to_directive["design"]
+    assert "@coding-design" in spec.response_to_directive["design"]
 
 
 def test_build_dynamic_triage_spec_design_absent():
@@ -1128,3 +1137,273 @@ def test_triage_response_mixed_with_design():
     assert "cannot process a mix" in msg
 
 
+
+
+class _MockRouter:
+    """Mock Laya Router capturing predict calls and returning canned responses."""
+
+    def __init__(self, response: dict):
+        self.response = response
+        self.calls: list[tuple[dict, dict]] = []
+
+    def predict(self, state: dict, questions: dict, **kwargs) -> dict:
+        self.calls.append((state, questions))
+        return self.response
+
+
+def test_triage_question_anchored_to_prompt():
+    assert TRIAGE_QUESTION == "Which single agent or action should handle `prompt`?"
+    assert "`prompt`" in TRIAGE_QUESTION
+
+
+def test_parallel_choice_and_noul_single_predict_call():
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "coding",
+                    "probabilities": {"inquiry": 0.05, "coding": 0.95},
+                    "confidence": 0.92,
+                    "answer_confidence": 0.95,
+                },
+                "requires_changes": {
+                    "type": "noul",
+                    "noul": 0.91,
+                    "confidence": 0.91,
+                },
+                "is_mixed": {
+                    "type": "noul",
+                    "noul": 0.08,
+                    "confidence": 0.92,
+                },
+            },
+            "usage": {"truncated": False, "truncated_questions": []},
+        }
+    )
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    engine._router = mock_router
+
+    result = engine.triage("Implement a new CLI flag", invocation_num=0)
+    assert len(mock_router.calls) == 1
+    state, questions = mock_router.calls[0]
+    assert state == {"prompt": "Implement a new CLI flag"}
+    assert set(questions.keys()) == {"about", "requires_changes", "is_mixed"}
+    assert questions["about"]["type"] == "choice"
+    assert questions["requires_changes"]["type"] == "noul"
+    assert questions["is_mixed"]["type"] == "noul"
+    assert result.intent == "coding"
+    assert result.response_choice == "coding"
+    assert result.response_confidence == 0.92
+    assert result.requires_user_confirmation is False
+
+
+def test_parallel_is_mixed_triggers_mixed_directive():
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "coding",
+                    "probabilities": {"inquiry": 0.35, "coding": 0.65},
+                    "confidence": 0.60,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.85, "confidence": 0.85},
+                "is_mixed": {"type": "noul", "noul": 0.89, "confidence": 0.89},
+            },
+            "usage": {"truncated": False},
+        }
+    )
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    engine._router = mock_router
+
+    result = engine.triage("Explain auth and implement rate limiting", invocation_num=0)
+    assert result.response_choice == "mixed"
+    assert result.intent == "mixed"
+    assert result.requires_user_confirmation is False
+    msg = result.inject_steps[0]["systemMessage"]["systemMessage"]
+    assert "cannot process a mix" in msg
+
+
+def test_requires_changes_yes_gates_inquiry_to_disambiguation():
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "inquiry",
+                    "probabilities": {"inquiry": 0.88, "coding": 0.12},
+                    "confidence": 0.88,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.90, "confidence": 0.90},
+                "is_mixed": {"type": "noul", "noul": 0.10, "confidence": 0.90},
+            },
+            "usage": {"truncated": False},
+        }
+    )
+    engine = LayaTriageEngine(
+        use_router=False,
+        installed_plugins={"agentic-coding-plugin"},
+    )
+    engine._router = mock_router
+
+    result = engine.triage("Can you update the config file?", invocation_num=0)
+    assert result.response_confidence < CONFIDENCE_THRESHOLD
+    assert result.requires_user_confirmation is True
+    assert "ask_question" in result.inject_steps[0]["systemMessage"]["systemMessage"]
+
+
+@pytest.mark.parametrize("mutating_agent,plugin_name", [
+    ("coding", "agentic-coding-plugin"),
+    ("design", "agentic-design-plugin"),
+    ("documentation", "agentic-project-documenting-plugin"),
+    ("grooming", "agentic-project-grooming-plugin"),
+])
+def test_requires_changes_no_gates_mutating_agents(mutating_agent: str, plugin_name: str):
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": mutating_agent,
+                    "probabilities": {"inquiry": 0.10, mutating_agent: 0.90},
+                    "confidence": 0.90,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.12, "confidence": 0.88},
+                "is_mixed": {"type": "noul", "noul": 0.05, "confidence": 0.95},
+            },
+            "usage": {"truncated": False},
+        }
+    )
+    engine = LayaTriageEngine(use_router=False, installed_plugins={plugin_name})
+    engine._router = mock_router
+
+    result = engine.triage("What does this component do?", invocation_num=0)
+    assert result.response_confidence < CONFIDENCE_THRESHOLD
+    assert result.requires_user_confirmation is True
+
+
+@pytest.mark.parametrize("non_mutating_agent,plugin_name", [
+    ("monitoring", "agentic-task-monitoring-plugin"),
+    ("investigation", "agentic-issue-investigation-plugin"),
+    ("research", "agentic-topic-researching-plugin"),
+])
+def test_requires_changes_no_does_not_penalize_non_mutating_agents(non_mutating_agent: str, plugin_name: str):
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": non_mutating_agent,
+                    "probabilities": {"inquiry": 0.08, non_mutating_agent: 0.92},
+                    "confidence": 0.91,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.10, "confidence": 0.90},
+                "is_mixed": {"type": "noul", "noul": 0.05, "confidence": 0.95},
+            },
+            "usage": {"truncated": False},
+        }
+    )
+    engine = LayaTriageEngine(use_router=False, installed_plugins={plugin_name})
+    engine._router = mock_router
+
+    result = engine.triage("Read-only operational or research request", invocation_num=0)
+    assert result.intent == non_mutating_agent
+    assert result.response_confidence == 0.91
+    assert result.requires_user_confirmation is False
+
+
+def test_calibrated_confidence_preferred_with_fallback_when_none():
+    engine = LayaTriageEngine(use_router=False, installed_plugins={"agentic-coding-plugin"})
+
+    # 1. Calibrated confidence (0.72) is preferred over probabilities["coding"] (0.94)
+    engine._router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "coding",
+                    "probabilities": {"inquiry": 0.06, "coding": 0.94},
+                    "confidence": 0.72,
+                    "answer_confidence": 0.94,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.88, "confidence": 0.88},
+            },
+        }
+    )
+    choice, conf, _ = engine.evaluate_system1_triage("Implement feature")
+    assert choice == "coding"
+    assert conf == 0.72
+
+    # 2. Fallback to probs[choice] when confidence is None
+    engine._router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "coding",
+                    "probabilities": {"inquiry": 0.06, "coding": 0.94},
+                    "confidence": None,
+                    "answer_confidence": 0.94,
+                },
+            },
+        }
+    )
+    choice, conf, _ = engine.evaluate_system1_triage("Implement feature")
+    assert choice == "coding"
+    assert conf == 0.94
+
+
+def test_usage_inspection_logs_warnings_on_truncation_and_collision(caplog):
+    engine = LayaTriageEngine(use_router=False, installed_plugins={"agentic-coding-plugin"})
+    engine._router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "coding",
+                    "probabilities": {"inquiry": 0.1, "coding": 0.9},
+                    "confidence": 0.9,
+                },
+            },
+            "usage": {
+                "truncated": True,
+                "truncated_questions": ["about"],
+                "options": ["inquiry"],
+            },
+        }
+    )
+    with caplog.at_level("WARNING"):
+        engine.evaluate_system1_triage("Long prompt")
+    assert "truncated" in caplog.text.lower()
+    assert "mismatch/collision" in caplog.text.lower()
+
+
+def test_single_plugin_inquiry_only_omits_is_mixed():
+    mock_router = _MockRouter(
+        {
+            "answers": {
+                "about": {
+                    "type": "choice",
+                    "choice": "inquiry",
+                    "probabilities": {"inquiry": 1.0},
+                    "confidence": 0.95,
+                },
+                "requires_changes": {"type": "noul", "noul": 0.10, "confidence": 0.90},
+            },
+        }
+    )
+    engine = LayaTriageEngine(use_router=False, installed_plugins=set())
+    engine._router = mock_router
+
+    result = engine.triage("What is Python?", invocation_num=0)
+    _, questions = mock_router.calls[0]
+    assert "is_mixed" not in questions
+    assert result.intent == "question"
+    assert result.requires_user_confirmation is False

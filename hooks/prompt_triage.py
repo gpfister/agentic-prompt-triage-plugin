@@ -47,7 +47,14 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.80
-TRIAGE_QUESTION = "What is this prompt about ?"
+TRIAGE_QUESTION = "Which single agent or action should handle `prompt`?"
+REQUIRES_CHANGES_QUESTION = (
+    "Does `prompt` ask to create, edit, scaffold, or modify files, code, designs, or documentation?"
+)
+IS_MIXED_QUESTION = "Does `prompt` combine two or more separate tasks for different workflows?"
+
+MUTATING_AGENTS = frozenset({"coding", "documentation", "grooming", "design"})
+NON_MUTATING_AGENTS = frozenset({"monitoring", "investigation", "research"})
 
 PRIMARY_PLUGINS = {
     "agentic-coding-plugin",
@@ -182,140 +189,110 @@ def build_dynamic_triage_spec(installed_plugins: set[str]) -> DynamicTriageSpec:
     intent_to_r: dict[str, str] = {}
     r_to_directive: dict[str, str] = {}
 
-    idx = 1
-    # Response 1: always inquiries involving no changes
-    r_key = f"response {idx}"
-    responses[r_key] = "one or more inquiries involving no changes"
-    r_to_intent[r_key] = "question"
-    intent_to_r["question"] = r_key
-    r_to_directive[r_key] = (
-        f"Prompt Triage Directive: {r_key} identified (inquiries involving no changes). "
+    # Always enabled: read-only inquiries involving no changes
+    responses["inquiry"] = (
+        "Read-only question, explanation, or code review making no file, code, design, or documentation changes."
+    )
+    r_to_intent["inquiry"] = "question"
+    intent_to_r["question"] = "inquiry"
+    r_to_directive["inquiry"] = (
+        "Prompt Triage Directive: inquiry identified (read-only inquiry, no changes). "
         "Respond directly to the prompt. Do not make any changes."
     )
-    idx += 1
 
     # Coding change request (if agentic-coding-plugin is installed)
     if coding_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more code change request"
-        r_to_intent[r_key] = "coding"
-        intent_to_r["coding"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (code change request). "
+        responses["coding"] = "Implement, edit, refactor, fix, or build source code, configuration, or tests."
+        r_to_intent["coding"] = "coding"
+        intent_to_r["coding"] = "coding"
+        r_to_directive["coding"] = (
+            "Prompt Triage Directive: coding identified (code change request). "
             "You must invoke the coding subagent (@coding) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding', Role='Coding Workflow Orchestrator', Prompt=...). "
             "Do not write or modify application code directly in the main agent turn."
         )
-        idx += 1
 
-    # Task monitoring request (if agentic-monitor-plugin or agentic-monitoring-plugin is installed)
+    # Task monitoring request (if agentic-task-monitoring-plugin or aliases are installed)
     if monitoring_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more task monitoring request"
-        r_to_intent[r_key] = "monitoring"
-        intent_to_r["monitoring"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (task monitoring request). "
+        responses["monitoring"] = "Watch, tail, or monitor live application logs, containers, or serial console streams."
+        r_to_intent["monitoring"] = "monitoring"
+        intent_to_r["monitoring"] = "monitoring"
+        r_to_directive["monitoring"] = (
+            "Prompt Triage Directive: monitoring identified (task monitoring request). "
             "You must invoke the monitoring subagent (@coding-monitor) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding-monitor', Role='Telemetry Monitor', Prompt=...). "
             "Do not perform monitoring directly in the main agent turn."
         )
-        idx += 1
 
-    # Issue investigation request (if agentic-investigate-plugin is installed)
+    # Issue investigation request (if agentic-issue-investigation-plugin or alias is installed)
     if investigation_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more issue investigation request"
-        r_to_intent[r_key] = "investigation"
-        intent_to_r["investigation"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (issue investigation request). "
+        responses["investigation"] = "Diagnose bugs, trace errors, or investigate root causes without editing code."
+        r_to_intent["investigation"] = "investigation"
+        intent_to_r["investigation"] = "investigation"
+        r_to_directive["investigation"] = (
+            "Prompt Triage Directive: investigation identified (issue investigation request). "
             "You must invoke the investigate subagent (@coding-investigate) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding-investigate', Role='Issue Investigator', Prompt=...). "
             "Do not perform investigation directly in the main agent turn."
         )
-        idx += 1
 
-    # Topic research request (if agentic-research-plugin is installed)
+    # Topic research request (if agentic-topic-researching-plugin or alias is installed)
     if research_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more topic research or information retrieval requests"
-        r_to_intent[r_key] = "research"
-        intent_to_r["research"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (topic research or information retrieval request). "
+        responses["research"] = (
+            "Conduct web or literature research, compare technologies, or synthesize external information."
+        )
+        r_to_intent["research"] = "research"
+        intent_to_r["research"] = "research"
+        r_to_directive["research"] = (
+            "Prompt Triage Directive: research identified (topic research or information retrieval request). "
             "You must invoke the research subagent (@coding-research) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding-research', Role='Topic Researcher', Prompt=...). "
             "Do not perform research directly in the main agent turn."
         )
-        idx += 1
 
-    # Documentation request (if agentic-document-plugin or agentic-obsidian-plugin is installed)
+    # Documentation request (if agentic-project-documenting-plugin or aliases are installed)
     if documentation_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more documentation request"
-        r_to_intent[r_key] = "documentation"
-        intent_to_r["documentation"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (documentation request). "
+        responses["documentation"] = (
+            "Author, update, or sync Obsidian vault notes, ADRs, architecture docs, or session records."
+        )
+        r_to_intent["documentation"] = "documentation"
+        intent_to_r["documentation"] = "documentation"
+        r_to_directive["documentation"] = (
+            "Prompt Triage Directive: documentation identified (documentation request). "
             "You must invoke the coding-document subagent (@coding-document) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding-document', Role='Documentation Specialist', Prompt=...). "
             "Do not perform documentation directly in the main agent turn."
         )
-        idx += 1
 
     # Project grooming request (if agentic-project-grooming-plugin is installed)
     if grooming_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more project grooming or scaffolding requests"
-        r_to_intent[r_key] = "grooming"
-        intent_to_r["grooming"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (project grooming or scaffolding request). "
+        responses["grooming"] = "Groom project scope, audit workspace gaps, or scaffold and initialize a new repository."
+        r_to_intent["grooming"] = "grooming"
+        intent_to_r["grooming"] = "grooming"
+        r_to_directive["grooming"] = (
+            "Prompt Triage Directive: grooming identified (project grooming or scaffolding request). "
             "You must invoke the project grooming skill using `/project-grooming <prompt>`. "
             "Do not perform grooming or scaffolding directly without the skill."
         )
-        idx += 1
 
     # UI/UX design request (if agentic-design-plugin is installed)
     if design_enabled:
-        r_key = f"response {idx}"
-        responses[r_key] = "one or more UI/UX design, wireframe, mockup, design-token, or PenPot requests"
-        r_to_intent[r_key] = "design"
-        intent_to_r["design"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified (UI/UX design request). "
+        responses["design"] = "Create, inspect, or update UI/UX wireframes, mockups, design tokens, or PenPot files."
+        r_to_intent["design"] = "design"
+        intent_to_r["design"] = "design"
+        r_to_directive["design"] = (
+            "Prompt Triage Directive: design identified (UI/UX design request). "
             "You must invoke the design subagent (@coding-design) using invoke_subagent:\n"
             "invoke_subagent(TypeName='coding-design', Role='UI/UX Designer', Prompt=...). "
             "Do not perform UI/UX design or PenPot authoring directly in the main agent turn."
         )
-        idx += 1
 
-    # Mixed request (if at least one capability is enabled alongside inquiries)
+    # Mixed intent mapping (handled via parallel is_mixed noul question, not in choice criteria)
     if any([coding_enabled, monitoring_enabled, investigation_enabled, research_enabled, documentation_enabled, grooming_enabled, design_enabled]):
-        r_key = f"response {idx}"
-        parts = ["inquiries"]
-        if coding_enabled:
-            parts.append("code change requests")
-        if monitoring_enabled:
-            parts.append("task monitoring")
-        if investigation_enabled:
-            parts.append("issue investigation requests")
-        if research_enabled:
-            parts.append("topic research requests")
-        if documentation_enabled:
-            parts.append("documentation requests")
-        if grooming_enabled:
-            parts.append("project grooming requests")
-        if design_enabled:
-            parts.append("UI/UX design requests")
-        desc = f"a mix of {', '.join(parts[:-1])} and/or {parts[-1]}"
-
-        responses[r_key] = desc
-        r_to_intent[r_key] = "mixed"
-        intent_to_r["mixed"] = r_key
-        r_to_directive[r_key] = (
-            f"Prompt Triage Directive: {r_key} identified ({desc}). "
+        r_to_intent["mixed"] = "mixed"
+        intent_to_r["mixed"] = "mixed"
+        r_to_directive["mixed"] = (
+            "Prompt Triage Directive: mixed identified (multiple separate workflows combined). "
             "You must reject the prompt, responding to the user that you cannot process a mix of inquiries and tasks. "
             "Ask the user to separate their requests into individual inquiries or tasks."
         )
@@ -382,7 +359,7 @@ class TriageResult(BaseModel):
     scope_confidence: float = Field(default=1.0, description="Confidence of scope determination")
     response_choice: Optional[str] = Field(
         default=None,
-        description="Selected response key (e.g. response 1, response 2)",
+        description="Selected semantic response key (e.g. inquiry, coding, mixed)",
     )
     response_confidence: float = Field(default=1.0, description="Confidence of selected response")
     response_probabilities: Dict[str, float] = Field(
@@ -407,6 +384,7 @@ class LayaTriageEngine:
         use_router: bool = True,
         installed_plugins: Optional[set[str] | list[str]] = None,
         workspace_paths: Optional[list[str]] = None,
+        model: Optional[str] = None,
     ):
         if installed_plugins is not None:
             self.installed_plugins = set(installed_plugins)
@@ -415,6 +393,8 @@ class LayaTriageEngine:
 
         spec = build_dynamic_triage_spec(self.installed_plugins)
         self.triage_responses, self.response_to_intent, self.intent_to_response, self.response_to_directive = spec
+        self._model = model
+        self._last_usage: dict[str, Any] = {}
 
         self._router = None
         if use_router:
@@ -429,26 +409,107 @@ class LayaTriageEngine:
         if not self._router:
             return None
         try:
+            if self._model is not None:
+                return self._router.predict({"prompt": text}, questions, model=self._model)
             return self._router.predict({"prompt": text}, questions)
         except Exception as e:
             logger.warning(f"Laya prediction failed: {e}")
             return None
 
+    @staticmethod
+    def _parse_noul_answer(ans: dict[str, Any]) -> tuple[bool, float]:
+        """Parse a Laya noul answer into (is_yes, calibrated_confidence)."""
+        raw_noul = ans.get("noul")
+        if isinstance(raw_noul, bool):
+            is_yes = raw_noul
+        elif isinstance(raw_noul, (int, float)):
+            is_yes = float(raw_noul) >= 0.5
+        elif isinstance(raw_noul, str):
+            is_yes = raw_noul.strip().lower() in ("yes", "true", "1")
+        else:
+            is_yes = str(ans.get("choice", "")).strip().lower() in ("yes", "true", "1")
+
+        conf = ans.get("confidence")
+        if conf is None:
+            conf = ans.get("answer_confidence")
+        if conf is None and isinstance(raw_noul, (int, float)) and not isinstance(raw_noul, bool):
+            val = float(raw_noul)
+            conf = val if is_yes else 1.0 - val
+        if conf is None:
+            conf = 0.0
+        return is_yes, float(conf)
+
+    def _inspect_usage(self, usage: Any) -> None:
+        """Inspect Laya prediction usage metadata and log warnings on truncation or option collisions."""
+        if not isinstance(usage, dict):
+            self._last_usage = {}
+            return
+        self._last_usage = usage
+        if usage.get("truncated") or usage.get("truncated_questions"):
+            logger.warning("Laya triage input or criteria truncated: %s", usage)
+        options = usage.get("options")
+        if isinstance(options, dict):
+            if options.get("collisions") or set(options.keys()) != set(self.triage_responses.keys()):
+                logger.warning(
+                    "Laya triage options mismatch/collision: %s (expected %s)",
+                    options,
+                    list(self.triage_responses.keys()),
+                )
+        elif isinstance(options, list):
+            if len(options) != len(self.triage_responses) or set(options) != set(self.triage_responses.keys()):
+                logger.warning(
+                    "Laya triage options mismatch/collision: %s (expected %s)",
+                    options,
+                    list(self.triage_responses.keys()),
+                )
+
     def evaluate_system1_triage(self, prompt: str) -> tuple[str, float, dict[str, float]]:
-        """Triage prompt using Laya Router system1 model with dynamic criteria."""
-        questions = {
+        """Triage prompt using parallel Laya Router choice + noul questions in a single forward pass."""
+        questions: dict[str, Any] = {
             "about": {
                 "type": "choice",
                 "instructions": TRIAGE_QUESTION,
                 "criteria": self.triage_responses,
-            }
+            },
+            "requires_changes": {
+                "type": "noul",
+                "instructions": REQUIRES_CHANGES_QUESTION,
+            },
         }
+        if len(self.triage_responses) > 1:
+            questions["is_mixed"] = {
+                "type": "noul",
+                "instructions": IS_MIXED_QUESTION,
+            }
+
         res = self._predict_with_laya(prompt, questions)
         if res and "answers" in res and "about" in res["answers"]:
-            ans = res["answers"]["about"]
-            choice = ans.get("choice", "response 1")
+            self._inspect_usage(res.get("usage", {}))
+            answers = res["answers"]
+            ans = answers["about"]
+            choice = ans.get("choice", "inquiry")
             probs = ans.get("probabilities", {})
-            conf = probs.get(choice, ans.get("answer_confidence", 0.0))
+            conf = ans.get("confidence")
+            if conf is None:
+                conf = probs.get(choice, ans.get("answer_confidence", 0.0))
+            conf = float(conf)
+
+            # 1. Mixed-intent detection via parallel is_mixed noul question
+            if len(self.triage_responses) > 1 and "is_mixed" in answers and "mixed" in self.response_to_intent:
+                is_mixed_yes, is_mixed_conf = self._parse_noul_answer(answers["is_mixed"])
+                sorted_probs = sorted((float(v) for v in probs.values()), reverse=True)
+                second_prob = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
+                if is_mixed_yes and (is_mixed_conf >= CONFIDENCE_THRESHOLD or second_prob >= 0.20):
+                    return "mixed", is_mixed_conf, probs
+
+            # 2. Mutating-agent vs inquiry gating via parallel requires_changes noul question
+            if "requires_changes" in answers:
+                req_changes_yes, req_changes_conf = self._parse_noul_answer(answers["requires_changes"])
+                if choice == "inquiry" and req_changes_yes and req_changes_conf >= CONFIDENCE_THRESHOLD:
+                    conf = min(conf, CONFIDENCE_THRESHOLD - 0.05)
+                elif choice in MUTATING_AGENTS and (not req_changes_yes) and req_changes_conf >= CONFIDENCE_THRESHOLD:
+                    conf = min(conf, CONFIDENCE_THRESHOLD - 0.05)
+
             return choice, conf, probs
 
         return self._heuristic_system1_triage(prompt)
@@ -643,7 +704,7 @@ class LayaTriageEngine:
             return r_key, 0.88, probs
 
         # Ambiguous fallback (< 0.80) to present options to user
-        default_key = "response 1"
+        default_key = "inquiry"
         probs = {r: 1.0 / len(self.triage_responses) for r in self.triage_responses}
         probs[default_key] = 0.30
         return default_key, 0.30, probs
@@ -658,10 +719,14 @@ class LayaTriageEngine:
         choice, conf, probs = self.evaluate_system1_triage(prompt)
         intent = self.response_to_intent.get(choice, "question")
 
+        selected_desc = self.triage_responses.get(
+            choice,
+            "multiple combined workflows" if choice == "mixed" else "",
+        )
         metadata_lines = [
             "=== Prompt Triage Telemetry & Metadata ===",
             f'- Question: "{TRIAGE_QUESTION}"',
-            f'- Selected Response: {choice} (\"{self.triage_responses.get(choice, "")}\")',
+            f'- Selected Response: {choice} ("{selected_desc}")',
             f"- Confidence: {conf:.4f}",
             f"- Active Plugins: {', '.join(sorted(self.installed_plugins)) or 'none'}",
             "- Probability Distribution:",
@@ -669,6 +734,9 @@ class LayaTriageEngine:
         for r_key, r_desc in self.triage_responses.items():
             prob_val = probs.get(r_key, 0.0)
             metadata_lines.append(f'  * {r_key} (\"{r_desc}\"): {prob_val:.4f}')
+
+        if self._last_usage and (self._last_usage.get("truncated") or self._last_usage.get("truncated_questions")):
+            metadata_lines.append(f"- Usage Warning: truncated={self._last_usage.get('truncated')}, truncated_questions={self._last_usage.get('truncated_questions')}")
 
         if metadata:
             metadata_lines.append("- Context Metadata:")
