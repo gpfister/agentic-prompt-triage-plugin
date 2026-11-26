@@ -5,16 +5,17 @@ This rule set applies whenever the `agentic-prompt-triage-plugin` is active in a
 ---
 
 ## 1. Triage Architecture & Principles
-- **Fast Non-Autoregressive Classification**: Prompt triage uses the Laya Router System 1 model to classify user intent within a single fast forward pass.
+- **Fast Non-Autoregressive Classification**: Prompt triage uses the Laya Router System 1 model (`Router(preload=False)` default) to classify user intent within a single fast forward pass using parallel `choice` (`about` over semantic criteria keys) + `noul` (`requires_changes`, `is_mixed`) decomposition, calibrated `confidence` (`>= 0.80`), and `usage` (`truncated` / `options`) diagnostics.
 - **Dynamic Plugin-Aware Routing**:
-  - Evaluate if it is a code change request only if `agentic-coding-plugin` is installed (routes to `@coding`).
-  - Evaluate if it is an issue investigation request only if `agentic-issue-investigation-plugin` (or `agentic-investigate-plugin`) is installed (routes to `@coding-investigate`).
-  - Evaluate if it is a task monitoring request only if `agentic-task-monitoring-plugin` (or `agentic-monitor-plugin`, `agentic-monitoring-plugin`) is installed (routes to `@coding-monitor`).
-  - Evaluate if it is a topic research request only if `agentic-topic-researching-plugin` (or `agentic-research-plugin`) is installed (routes to `@coding-research`).
-  - Evaluate if it is a documentation request only if `agentic-project-documenting-plugin` (or `agentic-document-plugin`, `agentic-obsidian-plugin`) is installed (routes to `@coding-document`).
-  - Evaluate if it is a project grooming request only if `agentic-project-grooming-plugin` is installed (routes to `/project-grooming <prompt>`).
-  - Evaluate if it is a UI/UX design request only if `agentic-design-plugin` is installed (routes to `@coding-design`).
-  - Inquiries involving no changes are always supported.
+  - Evaluate code change requests (`coding`) only if `agentic-coding-plugin` is installed (routes to `@coding`).
+  - Evaluate issue investigation requests (`investigation`) only if `agentic-issue-investigation-plugin` (or `agentic-investigate-plugin`) is installed (routes to `@coding-investigate`).
+  - Evaluate task monitoring requests (`monitoring`) only if `agentic-task-monitoring-plugin` (or `agentic-monitor-plugin`, `agentic-monitoring-plugin`) is installed (routes to `@coding-monitor`).
+  - Evaluate topic research requests (`research`) only if `agentic-topic-researching-plugin` (or `agentic-research-plugin`) is installed (routes to `@coding-research`).
+  - Evaluate documentation requests (`documentation`) only if `agentic-project-documenting-plugin` (or `agentic-document-plugin`, `agentic-obsidian-plugin`) is installed (routes to `@coding-document`).
+  - Evaluate project grooming requests (`grooming`) only if `agentic-project-grooming-plugin` is installed (routes to `/project-grooming <prompt>`).
+  - Evaluate UI/UX design requests (`design`) only if `agentic-design-plugin` is installed (routes to `@coding-design`).
+  - Informational inquiries (`inquiry`) involving no changes are always supported.
+  - Mixed prompts (`is_mixed`) combining multiple workflows are rejected with guidance to separate requests.
   - If a requested capability is not supported by installed plugins, do not evaluate or include that response; respond directly with guidance.
 
 ---
